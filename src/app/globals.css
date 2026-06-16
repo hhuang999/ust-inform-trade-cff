@@ -1,26 +1,121 @@
 @import "tailwindcss";
 
+/*
+ * Design system — "Refined academic trust"
+ * Light-first, indigo brand, semantic verification colors, intentional dark mode.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Neutral surfaces */
+  --background: #f7f8fb;
+  --foreground: #0f172a;
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #6366f1;
+
+  /* Brand (indigo) */
+  --brand: #4f46e5;
+  --brand-foreground: #ffffff;
+  --brand-strong: #4338ca;
+
+  /* Semantic — verification state */
+  --verified: #059669;
+  --verified-soft: #d1fae5;
+  --pending: #d97706;
+  --pending-soft: #fef3c7;
+  --rejected: #e11d48;
+  --rejected-soft: #ffe4e6;
+  --unverified: #64748b;
+  --unverified-soft: #f1f5f9;
+
+  --shadow-color: 220 40% 25%;
 }
 
 @theme inline {
+  /* Surfaces / typography */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* CJK-aware sans stack so Chinese renders crisply, latin uses Geist */
+  --font-sans: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei",
+    "Hiragino Sans GB", "Source Han Sans SC", "Noto Sans CJK SC", system-ui,
+    sans-serif;
+  --font-mono: var(--font-geist-mono), "SFMono-Regular", ui-monospace, monospace;
+
+  /* Brand */
+  --color-brand: var(--brand);
+  --color-brand-fg: var(--brand-foreground);
+  --color-brand-strong: var(--brand-strong);
+
+  /* Semantic */
+  --color-verified: var(--verified);
+  --color-verified-soft: var(--verified-soft);
+  --color-pending: var(--pending);
+  --color-pending-soft: var(--pending-soft);
+  --color-rejected: var(--rejected);
+  --color-rejected-soft: var(--rejected-soft);
+  --color-unverified: var(--unverified);
+  --color-unverified-soft: var(--unverified-soft);
+
+  /* Radius + elevation rhythm */
+  --radius: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-sm: 0.5rem;
+
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06);
+  --shadow-md: 0 4px 12px -2px hsl(var(--shadow-color) / 0.08),
+    0 2px 6px -2px hsl(var(--shadow-color) / 0.06);
+  --shadow-lg: 0 16px 40px -12px hsl(var(--shadow-color) / 0.16),
+    0 4px 12px -4px hsl(var(--shadow-color) / 0.08);
 }
 
+/* Refined dark mode — deep slate, never the raw #0a0a0a default */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b1120;
+    --foreground: #e6edf6;
+
+    --card: #111a2e;
+    --card-foreground: #e6edf6;
+
+    --muted: #16223b;
+    --muted-foreground: #94a3b8;
+
+    --border: #233049;
+    --input: #233049;
+    --ring: #818cf8;
+
+    --brand: #6366f1;
+    --brand-foreground: #ffffff;
+    --brand-strong: #4f46e5;
+
+    --verified-soft: #064e3b;
+    --pending-soft: #451a03;
+    --rejected-soft: #4c0519;
+    --unverified-soft: #1e293b;
+
+    --shadow-color: 222 60% 4%;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
