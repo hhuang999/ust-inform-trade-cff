@@ -361,6 +361,7 @@ model NeedMatch {
   need     Need @relation(fields: [needId], references: [id], onDelete: Cascade)
   provider User @relation("NeedMatchProvider", fields: [providerId], references: [id], onDelete: Cascade)
 
+  @@unique([needId, providerId])
   @@index([needId, status])
   @@index([providerId, status])
   @@index([status, firstConfirmedAt])

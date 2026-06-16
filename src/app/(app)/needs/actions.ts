@@ -1,0 +1,553 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
+
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import {
+  requireVerifiedUser,
+  NotAuthenticatedError,
+  NotVerifiedError,
+  type SessionUser,
+} from "@/lib/permissions";
+import {
+  needCreateSchema,
+  needUpdateSchema,
+  type NeedCreateInput,
+  type NeedUpdateInput,
+} from "@/lib/validation/need";
+
+/**
+ * 写入通知。直接落到 notifications 表以支持 `data` 字段。
+ */
+function notify(params: {
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  link?: string | null;
+  data?: Prisma.InputJsonValue;
+}) {
+  return prisma.notification.create({ data: params });
+}
+
+type ActionResult<T = object> =
+  | ({ ok: true } & T)
+  | { ok: false; error: string };
+
+/** 统一鉴权:将 requireVerifiedUser 的异常映射为可返回给客户端的错误对象。 */
+async function resolveActor(): Promise<SessionUser | { error: string }> {
+  const session = await auth();
+  const user: SessionUser | null = session?.user
+    ? {
+        id: session.user.id,
+        role: session.user.role,
+        verificationStatus: session.user.verificationStatus,
+      }
+    : null;
+  try {
+    return requireVerifiedUser(user);
+  } catch (e) {
+    if (e instanceof NotAuthenticatedError) return { error: "请先登录" };
+    if (e instanceof NotVerifiedError) return { error: "请先完成身份认证" };
+    return { error: "请先登录" };
+  }
+}
+
+function revalidateNeedRoutes(needId?: string) {
+  revalidatePath("/needs");
+  revalidatePath("/me/needs");
+  revalidatePath("/me/matches");
+  if (needId) revalidatePath(`/needs/${needId}`);
+}
+
+// ───────────────────────── 需求生命周期 ─────────────────────────
+
+/**
+ * 发布需求(requesterId = 当前用户,status OPEN)。
+ */
+export async function createNeed(
+  input: NeedCreateInput
+): Promise<ActionResult<{ needId: string }>> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const parsed = needCreateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "参数校验失败" };
+  }
+  const d = parsed.data;
+
+  const need = await prisma.need.create({
+    data: {
+      requesterId: actor.id,
+      title: d.title,
+      description: d.description,
+      expectedProfile: d.expectedProfile ?? null,
+      reward: d.reward,
+      expectedTime: d.expectedTime,
+      formatPreference: d.formatPreference,
+      category: d.category,
+      contactInfo: d.contactInfo,
+      contactVisibility: d.contactVisibility,
+      status: "OPEN",
+    },
+    select: { id: true },
+  });
+
+  revalidateNeedRoutes(need.id);
+  return { ok: true, needId: need.id };
+}
+
+/**
+ * 更新需求(仅发布者,且状态须为 OPEN 或 PAUSED)。
+ */
+export async function updateNeed(
+  needId: string,
+  input: NeedUpdateInput
+): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const parsed = needUpdateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "参数校验失败" };
+  }
+  const d = parsed.data;
+
+  const need = await prisma.need.findUnique({
+    where: { id: needId },
+    select: { requesterId: true, status: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  if (need.requesterId !== actor.id) return { ok: false, error: "无权操作他人需求" };
+  if (need.status !== "OPEN" && need.status !== "PAUSED") {
+    return { ok: false, error: "当前状态不可编辑" };
+  }
+
+  const data: Prisma.NeedUpdateInput = {};
+  if (d.title !== undefined) data.title = d.title;
+  if (d.description !== undefined) data.description = d.description;
+  if (d.expectedProfile !== undefined) data.expectedProfile = d.expectedProfile ?? null;
+  if (d.reward !== undefined) data.reward = d.reward;
+  if (d.expectedTime !== undefined) data.expectedTime = d.expectedTime;
+  if (d.formatPreference !== undefined) data.formatPreference = d.formatPreference;
+  if (d.category !== undefined) data.category = d.category;
+  if (d.contactInfo !== undefined) data.contactInfo = d.contactInfo;
+  if (d.contactVisibility !== undefined) data.contactVisibility = d.contactVisibility;
+
+  await prisma.need.update({ where: { id: needId }, data });
+  revalidateNeedRoutes(needId);
+  return { ok: true };
+}
+
+/** 暂停需求(仅发布者,OPEN→PAUSED)。 */
+export async function pauseNeed(needId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const need = await prisma.need.findUnique({
+    where: { id: needId },
+    select: { requesterId: true, status: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  if (need.requesterId !== actor.id) return { ok: false, error: "无权操作他人需求" };
+  if (need.status !== "OPEN") return { ok: false, error: "仅开放中的需求可暂停" };
+
+  await prisma.need.update({ where: { id: needId }, data: { status: "PAUSED" } });
+  revalidateNeedRoutes(needId);
+  return { ok: true };
+}
+
+/** 恢复需求(仅发布者,PAUSED→OPEN)。 */
+export async function resumeNeed(needId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const need = await prisma.need.findUnique({
+    where: { id: needId },
+    select: { requesterId: true, status: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  if (need.requesterId !== actor.id) return { ok: false, error: "无权操作他人需求" };
+  if (need.status !== "PAUSED") return { ok: false, error: "仅已暂停的需求可恢复" };
+
+  await prisma.need.update({ where: { id: needId }, data: { status: "OPEN" } });
+  revalidateNeedRoutes(needId);
+  return { ok: true };
+}
+
+/** 关闭需求(仅发布者,→CLOSED;剩余 APPLIED 应征置为 NOT_SELECTED 并通知)。 */
+export async function closeNeed(needId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const need = await prisma.need.findUnique({
+    where: { id: needId },
+    select: { requesterId: true, status: true, title: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  if (need.requesterId !== actor.id) return { ok: false, error: "无权操作他人需求" };
+  if (need.status === "CLOSED") return { ok: false, error: "需求已关闭" };
+
+  const leftover = await prisma.needMatch.findMany({
+    where: { needId, status: "APPLIED" },
+    select: { providerId: true },
+  });
+
+  await prisma.$transaction([
+    prisma.need.update({ where: { id: needId }, data: { status: "CLOSED" } }),
+    prisma.needMatch.updateMany({
+      where: { needId, status: "APPLIED" },
+      data: { status: "NOT_SELECTED" },
+    }),
+  ]);
+
+  await Promise.all(
+    leftover.map((m) =>
+      notify({
+        userId: m.providerId,
+        type: "need_not_selected",
+        title: "该需求已关闭(未选中)",
+        body: `「${need.title}」需求已关闭,你本次未被选中。`,
+        link: `/needs/${needId}`,
+      })
+    )
+  );
+
+  revalidateNeedRoutes(needId);
+  return { ok: true };
+}
+
+// ───────────────────────── 应征 / 撮合 ─────────────────────────
+
+/**
+ * 应征需求(提供者,已认证 ≠ 发布者;唯一 [needId, providerId],已存在则返回)。
+ */
+export async function applyToNeed(
+  needId: string,
+  message?: string
+): Promise<ActionResult<{ matchId: string }>> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const need = await prisma.need.findUnique({
+    where: { id: needId },
+    select: { requesterId: true, status: true, title: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  if (need.status !== "OPEN") return { ok: false, error: "该需求当前不可应征" };
+  if (need.requesterId === actor.id) {
+    return { ok: false, error: "不能应征自己的需求" };
+  }
+
+  // Schema 未对 [needId, providerId] 声明唯一约束,故在应用层做 find-or-create。
+  const match = await prisma.$transaction(async (tx) => {
+    const existing = await tx.needMatch.findFirst({
+      where: { needId, providerId: actor.id },
+      select: { id: true },
+    });
+    if (existing) return existing;
+    return tx.needMatch.create({
+      data: {
+        needId,
+        providerId: actor.id,
+        message: message ?? "",
+        status: "APPLIED",
+      },
+      select: { id: true },
+    });
+  });
+
+  await notify({
+    userId: need.requesterId,
+    type: "need_new_application",
+    title: "你的需求有新应征",
+    body: `「${need.title}」收到一条新的应征申请`,
+    link: `/needs/${needId}`,
+    data: { matchId: match.id, needId },
+  });
+
+  revalidateNeedRoutes(needId);
+  revalidatePath("/me/matches");
+  return { ok: true, matchId: match.id };
+}
+
+/** 发布者选定提供者(match APPLIED→MATCHED)。通知提供者。 */
+export async function chooseProvider(matchId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const match = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: { needId: true, providerId: true, status: true },
+  });
+  if (!match) return { ok: false, error: "应征记录不存在" };
+
+  const need = await prisma.need.findUnique({
+    where: { id: match.needId },
+    select: { requesterId: true, title: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  if (need.requesterId !== actor.id) return { ok: false, error: "只有发布者可选定提供者" };
+  if (match.status !== "APPLIED") return { ok: false, error: "该应征当前不可选定" };
+
+  await prisma.needMatch.update({
+    where: { id: matchId },
+    data: { status: "MATCHED" },
+  });
+
+  await notify({
+    userId: match.providerId,
+    type: "need_chosen",
+    title: "你已被选中",
+    body: `「${need.title}」需求方已选中你,请尽快联系对接。`,
+    link: "/me/matches",
+    data: { matchId, needId: match.needId },
+  });
+
+  revalidateNeedRoutes(match.needId);
+  revalidatePath("/me/matches");
+  return { ok: true };
+}
+
+/**
+ * 任一参与方确认完成(双方各确认一次)。
+ * - 第一方 → 设置 firstConfirmer,通知对方;
+ * - 第二方 → COMPLETED,通知双方评价。
+ */
+export async function confirmNeedMatchComplete(
+  matchId: string
+): Promise<ActionResult<{ completed?: boolean }>> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const match = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: {
+      needId: true,
+      providerId: true,
+      status: true,
+      firstConfirmerId: true,
+    },
+  });
+  if (!match) return { ok: false, error: "应征记录不存在" };
+
+  const need = await prisma.need.findUnique({
+    where: { id: match.needId },
+    select: { requesterId: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  const isParticipant = match.providerId === actor.id || need.requesterId === actor.id;
+  if (!isParticipant) return { ok: false, error: "无权操作此应征" };
+  if (match.status !== "MATCHED") {
+    return { ok: false, error: "该应征当前不可确认完成" };
+  }
+
+  const otherId = actor.id === match.providerId ? need.requesterId : match.providerId;
+
+  // 第一方确认。
+  if (!match.firstConfirmerId) {
+    await prisma.needMatch.update({
+      where: { id: matchId },
+      data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
+    });
+    await notify({
+      userId: otherId,
+      type: "need_confirm_request",
+      title: "对方已确认完成,请你确认",
+      body: "对方已确认本次对接完成,请尽快确认。",
+      link: "/me/matches",
+      data: { matchId },
+    });
+    revalidatePath("/me/matches");
+    return { ok: true, completed: false };
+  }
+
+  // 同一人重复确认。
+  if (match.firstConfirmerId === actor.id) {
+    return { ok: false, error: "你已确认,请等待对方确认" };
+  }
+
+  // 第二方确认 → 完成。
+  await prisma.needMatch.update({
+    where: { id: matchId },
+    data: { status: "COMPLETED", completedAt: new Date() },
+  });
+
+  const both = [match.providerId, need.requesterId];
+  await Promise.all(
+    both.map((uid) =>
+      notify({
+        userId: uid,
+        type: "need_completed",
+        title: "对接已完成",
+        body: "本次需求对接已完成,请对本次交易进行评价。",
+        link: "/me/matches",
+        data: { matchId, needId: match.needId },
+      })
+    )
+  );
+
+  revalidateNeedRoutes(match.needId);
+  revalidatePath("/me/matches");
+  return { ok: true, completed: true };
+}
+
+/**
+ * 任一参与方申请取消(MATCHED→CANCELLING + cancelledById),通知对方决定免责。
+ */
+export async function requestCancelNeedMatch(matchId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const match = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: { needId: true, providerId: true, status: true },
+  });
+  if (!match) return { ok: false, error: "应征记录不存在" };
+
+  const need = await prisma.need.findUnique({
+    where: { id: match.needId },
+    select: { requesterId: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+
+  const isProvider = match.providerId === actor.id;
+  const isRequester = need.requesterId === actor.id;
+  if (!isProvider && !isRequester) return { ok: false, error: "无权操作此应征" };
+  if (match.status !== "MATCHED") {
+    return { ok: false, error: "该应征当前不可取消" };
+  }
+
+  const otherId = isProvider ? need.requesterId : match.providerId;
+
+  await prisma.needMatch.update({
+    where: { id: matchId },
+    data: {
+      status: "CANCELLING",
+      cancelledById: actor.id,
+    },
+  });
+  await notify({
+    userId: otherId,
+    type: "need_cancel_request",
+    title: "对方申请取消,请决定是否同意免责",
+    body: "对方申请取消已撮合的对接,请决定是否同意免责。不同意将记对方违规。",
+    link: "/me/matches",
+    data: { matchId },
+  });
+
+  revalidateNeedRoutes(match.needId);
+  revalidatePath("/me/matches");
+  return { ok: true };
+}
+
+/**
+ * 非取消方决定免责(CANCELLING→CANCELLED)。
+ * - agree → liabilityAgreed=true(免责);
+ * - !agree → liabilityAgreed=false,取消方违规 +1 并记录。
+ */
+export async function decideNeedMatchLiability(
+  matchId: string,
+  agree: boolean
+): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const match = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: { needId: true, providerId: true, status: true, cancelledById: true },
+  });
+  if (!match) return { ok: false, error: "应征记录不存在" };
+  if (match.status !== "CANCELLING") return { ok: false, error: "该应征当前不在免责协商中" };
+  if (!match.cancelledById) return { ok: false, error: "该应征无需决定免责" };
+  if (match.cancelledById === actor.id) {
+    return { ok: false, error: "不能为自己申请的取消决定免责" };
+  }
+
+  const need = await prisma.need.findUnique({
+    where: { id: match.needId },
+    select: { requesterId: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  const isParticipant = match.providerId === actor.id || need.requesterId === actor.id;
+  if (!isParticipant) return { ok: false, error: "无权操作此应征" };
+
+  const cancellerId = match.cancelledById;
+
+  if (agree) {
+    await prisma.needMatch.update({
+      where: { id: matchId },
+      data: {
+        status: "CANCELLED",
+        liabilityAgreed: true,
+        liabilityDecidedAt: new Date(),
+      },
+    });
+    await Promise.all([
+      notify({
+        userId: cancellerId,
+        type: "need_cancel_result",
+        title: "取消已免责",
+        body: "对方同意免责,本次对接取消完成。",
+        link: "/me/matches",
+        data: { matchId },
+      }),
+      notify({
+        userId: actor.id,
+        type: "need_cancel_result",
+        title: "取消已免责",
+        body: "你已同意免责,本次对接取消完成。",
+        link: "/me/matches",
+        data: { matchId },
+      }),
+    ]);
+  } else {
+    await prisma.$transaction([
+      prisma.needMatch.update({
+        where: { id: matchId },
+        data: {
+          status: "CANCELLED",
+          liabilityAgreed: false,
+          liabilityDecidedAt: new Date(),
+        },
+      }),
+      prisma.user.update({
+        where: { id: cancellerId },
+        data: { violationCount: { increment: 1 } },
+      }),
+      prisma.violation.create({
+        data: {
+          userId: cancellerId,
+          source: "MATCH_CANCEL",
+          reason: "取消已撮合的需求对接(不同意免责)",
+          reference: matchId,
+        },
+      }),
+    ]);
+    await Promise.all([
+      notify({
+        userId: cancellerId,
+        type: "need_cancel_result",
+        title: "取消已记违规",
+        body: "对方不同意免责,本次取消已记录一次违规。",
+        link: "/me/matches",
+        data: { matchId },
+      }),
+      notify({
+        userId: actor.id,
+        type: "need_cancel_result",
+        title: "取消已记对方违规",
+        body: "你已不同意免责,对方本次取消已记录违规。",
+        link: "/me/matches",
+        data: { matchId },
+      }),
+    ]);
+  }
+
+  revalidateNeedRoutes(match.needId);
+  revalidatePath("/me/matches");
+  return { ok: true };
+}
