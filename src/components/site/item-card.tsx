@@ -64,10 +64,6 @@ export function ItemCard({
   return (
     <Link href={`/items/${id}`} className="group block">
       <Card
-        overflow-hidden
-        rounded-xl
-        gap-0
-        py-0
         className={cn(
           "h-full overflow-hidden rounded-xl border border-outline-variant/40 bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-float",
           isClosed && "opacity-70"
