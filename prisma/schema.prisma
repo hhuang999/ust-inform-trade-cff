@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id                  String             @id @default(cuid())
+  email               String?            @unique
+  phone               String?            @unique
+  passwordHash        String
+  realName            String
+  studentId           String
+  department          String
+  enrollmentYear      Int
+  nickname            String
+  avatarKey           String?
+  realNameVisible     Boolean            @default(false)
+  verificationStatus  VerificationStatus @default(UNVERIFIED)
+  violationCount      Int                @default(0)
+  role                Role               @default(USER)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
+
+  verificationRequests VerificationRequest[]
+  notifications        Notification[]
+
+  @@index([verificationStatus])
+}
+
+enum VerificationReqStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model VerificationRequest {
+  id          String              @id @default(cuid())
+  userId      String
+  photoKeys   String[]
+  status      VerificationReqStatus @default(PENDING)
+  reviewerId  String?
+  reason      String?
+  submittedAt DateTime            @default(now())
+  reviewedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, submittedAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+}
