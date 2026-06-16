@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/timeout", "schedule": "0 * * * *" }
+  ]
+}
