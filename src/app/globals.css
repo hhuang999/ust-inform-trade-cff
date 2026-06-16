@@ -1,5 +1,8 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+/* tw-animate-css vendored locally — the npm bare import only exposes a "style"
+   export condition that Turbopack dev fails to resolve (production build does).
+   A relative import resolves identically in dev and build. */
+@import "./tw-animate.css";
 
 /*
  * Design system — "纸感风" (paper-feel)

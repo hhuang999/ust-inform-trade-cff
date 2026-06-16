@@ -1,0 +1,118 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Bell,
+  LayoutDashboard,
+  Package,
+  Settings,
+  ShieldCheck,
+  ShoppingCart,
+  User,
+  Wrench,
+  HandHeart,
+  Home as HomeIcon,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import type { SessionUser } from "@/components/layout/user-menu";
+
+type NavItem = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+function browseItems(): NavItem[] {
+  return [
+    { label: "首页", href: "/", icon: HomeIcon },
+    { label: "物品", href: "/items", icon: Package },
+    { label: "服务", href: "/services", icon: Wrench },
+    { label: "需求", href: "/needs", icon: HandHeart },
+  ];
+}
+
+function mineItems(userId: string): NavItem[] {
+  return [
+    { label: "我的主页", href: `/profile/${userId}`, icon: User },
+    { label: "我的发布", href: "/me/items", icon: LayoutDashboard },
+    { label: "订单中心", href: "/me/bookings", icon: ShoppingCart },
+    { label: "通知", href: "/notifications", icon: Bell },
+    { label: "设置", href: "/settings", icon: Settings },
+  ];
+}
+
+function adminItems(): NavItem[] {
+  return [{ label: "认证审核", href: "/admin/verify", icon: ShieldCheck }];
+}
+
+function NavGroup({
+  title,
+  items,
+  pathname,
+}: {
+  title: string;
+  items: NavItem[];
+  pathname: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {title}
+      </p>
+      {items.map((item) => {
+        const Icon = item.icon;
+        const active =
+          item.href === "/"
+            ? pathname === "/"
+            : pathname === item.href || pathname.startsWith(item.href + "/");
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+              active
+                ? "bg-primary/10 font-medium text-primary"
+                : "text-foreground/80 hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Icon className="size-4 shrink-0" />
+            <span className="truncate">{item.label}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+export function AppSidebar({
+  user,
+  className,
+}: {
+  user?: SessionUser | null;
+  className?: string;
+}) {
+  const pathname = usePathname() ?? "/";
+
+  return (
+    <aside
+      className={cn(
+        "w-60 shrink-0 border-r border-outline-variant/40 bg-card/50",
+        className
+      )}
+    >
+      <nav className="sticky top-16 flex max-h-[calc(100vh-4rem)] flex-col gap-5 overflow-y-auto p-3">
+        <NavGroup title="浏览" items={browseItems()} pathname={pathname} />
+        {user ? (
+          <NavGroup title="我的" items={mineItems(user.id)} pathname={pathname} />
+        ) : null}
+        {user?.role === "ADMIN" ? (
+          <NavGroup title="管理" items={adminItems()} pathname={pathname} />
+        ) : null}
+      </nav>
+    </aside>
+  );
+}

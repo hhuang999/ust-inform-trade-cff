@@ -1,8 +1,7 @@
 import { auth } from "@/lib/auth";
 import { SiteHeader } from "@/components/layout/site-header";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 
-export default async function AppLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -20,10 +19,7 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader user={user} />
-      <div className="flex flex-1">
-        <AppSidebar user={user} className="hidden lg:block" />
-        <main className="min-h-0 min-w-0 flex-1">{children}</main>
-      </div>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }
