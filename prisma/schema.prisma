@@ -6,6 +6,8 @@ datasource db {
   provider = "postgresql"
 }
 
+// ───────────────────────── Existing P0 (auth/verification/notifications) ─────────────────────────
+
 enum VerificationStatus {
   UNVERIFIED
   PENDING
@@ -40,6 +42,25 @@ model User {
   verificationRequests VerificationRequest[]
   notifications        Notification[]
 
+  // Item panel
+  items            Item[]
+  itemInterests    ItemInterest[]
+  itemDealsSeller  ItemDeal[] @relation("ItemDealSeller")
+  itemDealsBuyer   ItemDeal[] @relation("ItemDealBuyer")
+  favorites        Favorite[]
+
+  // Service panel
+  services             Service[]
+  bookingsClient       Booking[] @relation("BookingClient")
+  needs                Need[]
+  needMatchesProvider  NeedMatch[] @relation("NeedMatchProvider")
+
+  // Cross-cutting
+  reviewsGiven    Review[]   @relation("ReviewReviewer")
+  reviewsReceived Review[]   @relation("ReviewReviewee")
+  reportsFiled    Report[]
+  violations      Violation[]
+
   @@index([verificationStatus])
 }
 
@@ -50,13 +71,13 @@ enum VerificationReqStatus {
 }
 
 model VerificationRequest {
-  id          String              @id @default(cuid())
+  id          String                @id @default(cuid())
   userId      String
   photoKeys   String[]
   status      VerificationReqStatus @default(PENDING)
   reviewerId  String?
   reason      String?
-  submittedAt DateTime            @default(now())
+  submittedAt DateTime              @default(now())
   reviewedAt  DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -71,10 +92,376 @@ model Notification {
   title     String
   body      String
   link      String?
+  data      Json?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read, createdAt])
+}
+
+// ───────────────────────── Contact visibility (shared) ─────────────────────────
+
+enum ContactVisibility {
+  VERIFIED_ONLY
+  ALL
+}
+
+// ───────────────────────── Item panel (二手物品) ─────────────────────────
+
+enum ItemStatus {
+  AVAILABLE
+  PENDING
+  SOLD
+  CLOSED
+}
+
+enum PriceMode {
+  SPECIFIC
+  FREE
+  NEGOTIABLE
+}
+
+model Item {
+  id                String          @id @default(cuid())
+  sellerId          String
+  title             String
+  description       String
+  category          String
+  condition         String
+  priceMode         PriceMode       @default(SPECIFIC)
+  price             Int?
+  originalPrice     Int?
+  imageKeys         String[]
+  tags              String[]
+  tradeMethods      String[]
+  pickupLocation    String?
+  contactInfo       String
+  contactVisibility ContactVisibility @default(VERIFIED_ONLY)
+  status            ItemStatus      @default(AVAILABLE)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  seller    User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  interests ItemInterest[]
+  deal      ItemDeal?
+  favorites Favorite[]
+
+  @@index([status, createdAt])
+  @@index([sellerId])
+  @@index([category])
+}
+
+/// A user who clicked "我想要" on an item (意向人 + Waiting List, unified).
+model ItemInterest {
+  id        String   @id @default(cuid())
+  itemId    String
+  userId    String
+  message   String?
+  createdAt DateTime @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, userId])
+  @@index([itemId, createdAt])
+}
+
+/// The in-progress/completed deal after a seller chooses a buyer.
+model ItemDeal {
+  id                String         @id @default(cuid())
+  itemId            String         @unique
+  sellerId          String
+  buyerId           String
+  status            ItemDealStatus @default(PENDING)
+  firstConfirmerId  String?
+  firstConfirmedAt  DateTime?
+  completedAt       DateTime?
+  cancelledById     String?
+  cancelledAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  item   Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  seller User @relation("ItemDealSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer  User @relation("ItemDealBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([buyerId])
+}
+
+enum ItemDealStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@index([userId])
+}
+
+// ───────────────────────── Service panel (咨询服务) ─────────────────────────
+
+enum ServiceStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+model Service {
+  id                String          @id @default(cuid())
+  providerId        String
+  title             String
+  description       String
+  qualification     String
+  proofImageKeys    String[]
+  categories        String[]
+  formats           String[]
+  durationTier      String?
+  price             String
+  contactInfo       String
+  contactVisibility ContactVisibility @default(VERIFIED_ONLY)
+  status            ServiceStatus   @default(ACTIVE)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  provider User           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  slots    ServiceSlot[]
+  bookings Booking[]
+
+  @@index([status, createdAt])
+  @@index([providerId])
+}
+
+/// Manually-added bookable time windows (MVP: manual add only, per PRD §4.3 / MVP note).
+model ServiceSlot {
+  id        String   @id @default(cuid())
+  serviceId String
+  startAt   DateTime
+  endAt     DateTime
+  createdAt DateTime @default(now())
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, startAt, endAt])
+  @@index([serviceId, startAt])
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLING
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+/// A client's appointment for a service slot.
+model Booking {
+  id                 String        @id @default(cuid())
+  serviceId          String
+  slotId             String?
+  slotStart          DateTime
+  slotEnd            DateTime
+  clientId           String
+  note               String
+  status             BookingStatus @default(PENDING)
+  rejectReason       String?
+  firstConfirmerId   String?
+  firstConfirmedAt   DateTime?
+  completedAt        DateTime?
+  cancelledById      String?
+  cancelledAt        DateTime?
+  /// null = no cancel-in-flight / no-fault; true = 免责 agreed; false = disagreed → violation for canceller
+  liabilityAgreed    Boolean?
+  liabilityDecidedAt DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  client  User    @relation("BookingClient", fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, status])
+  @@index([clientId, status])
+  @@index([status, firstConfirmedAt])
+}
+
+enum ExpectedTime {
+  ASAP
+  THIS_WEEK
+  TWO_WEEKS
+  FLEXIBLE
+}
+
+enum NeedStatus {
+  OPEN
+  PAUSED
+  CLOSED
+}
+
+model Need {
+  id                String          @id @default(cuid())
+  requesterId       String
+  title             String
+  description       String
+  expectedProfile   String?
+  reward            String
+  expectedTime      ExpectedTime
+  formatPreference  String
+  category          String
+  contactInfo       String
+  contactVisibility ContactVisibility @default(VERIFIED_ONLY)
+  status            NeedStatus      @default(OPEN)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  requester User         @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  matches   NeedMatch[]
+
+  @@index([status, createdAt])
+  @@index([requesterId])
+}
+
+enum NeedMatchStatus {
+  APPLIED
+  MATCHED
+  CANCELLING
+  COMPLETED
+  CANCELLED
+  NOT_SELECTED
+}
+
+/// A provider's application to a need (应征) and the resulting match.
+model NeedMatch {
+  id                 String          @id @default(cuid())
+  needId             String
+  providerId         String
+  message            String
+  status             NeedMatchStatus @default(APPLIED)
+  firstConfirmerId   String?
+  firstConfirmedAt   DateTime?
+  completedAt        DateTime?
+  cancelledById      String?
+  cancelledAt        DateTime?
+  liabilityAgreed    Boolean?
+  liabilityDecidedAt DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  need     Need @relation(fields: [needId], references: [id], onDelete: Cascade)
+  provider User @relation("NeedMatchProvider", fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([needId, status])
+  @@index([providerId, status])
+  @@index([status, firstConfirmedAt])
+}
+
+// ───────────────────────── Reviews (双盲评价) ─────────────────────────
+// dealType + dealId is a polymorphic link (no FK): resolve the source table in
+// application code based on dealType. One review per (dealType, dealId, reviewer).
+
+enum DealType {
+  ITEM
+  BOOKING
+  NEED_MATCH
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  dealType    DealType
+  dealId      String
+  reviewerId  String
+  revieweeId  String
+  rating      Int
+  content     String?
+  /// Hidden until both parties reviewed OR 30 days elapse (auto-reveal cron).
+  revealed    Boolean  @default(false)
+  revealedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  reviewer User @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee User @relation("ReviewReviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([dealType, dealId, reviewerId])
+  @@index([revieweeId, revealed])
+}
+
+// ───────────────────────── Reports (举报) ─────────────────────────
+// targetType + targetId is a polymorphic link (no FK): resolve in app code.
+
+enum ReportTargetType {
+  ITEM
+  SERVICE
+  NEED
+  USER
+}
+
+enum ReportReason {
+  FALSE_INFO
+  SUSPECTED_FRAUD
+  INAPPROPRIATE
+  INVALID_CONTACT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+}
+
+enum ReportAction {
+  NONE
+  WARNING
+  TAKEDOWN
+  BAN
+}
+
+model Report {
+  id          String           @id @default(cuid())
+  reporterId  String
+  targetType  ReportTargetType
+  targetId    String
+  reason      ReportReason
+  description String?
+  status      ReportStatus     @default(PENDING)
+  action      ReportAction?
+  resolverId  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+// ───────────────────────── Violations (违规) ─────────────────────────
+
+enum ViolationSource {
+  MANUAL
+  BOOKING_CANCEL
+  MATCH_CANCEL
+}
+
+model Violation {
+  id        String           @id @default(cuid())
+  userId    String
+  source    ViolationSource
+  reason    String
+  reference String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
