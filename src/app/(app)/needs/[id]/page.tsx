@@ -17,6 +17,7 @@ import {
   type ApplicantSummary,
   type MatchedSummary,
 } from "./need-detail-actions";
+import { ReportDialog } from "@/components/site/report-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -270,6 +271,11 @@ export default async function NeedDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {/* 举报 */}
+          <div className="flex justify-end">
+            <ReportDialog targetType="NEED" targetId={need.id} />
+          </div>
         </aside>
       </div>
     </PageContainer>

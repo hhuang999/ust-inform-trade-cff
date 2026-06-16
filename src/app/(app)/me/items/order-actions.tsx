@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
   CheckCircle2,
   Loader2,
-  ShieldCheck,
   XCircle,
 } from "lucide-react";
 
@@ -22,6 +21,7 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
+import { ReviewDialog } from "@/components/site/review-dialog";
 
 import {
   cancelItemDeal,
@@ -38,6 +38,10 @@ export interface OrderActionsProps {
   viewerId: string;
   /** 已完成时间(ISO 串)或 null;仅展示用。 */
   completedAt?: string | null;
+  /** 对方昵称(评价入口展示用)。 */
+  counterpartyNickname?: string;
+  /** 当前用户是否已对该交易评价过。 */
+  hasReviewed?: boolean;
 }
 
 /**
@@ -56,6 +60,8 @@ export function OrderActions({
   status,
   firstConfirmerId,
   viewerId,
+  counterpartyNickname,
+  hasReviewed,
 }: OrderActionsProps) {
   const [pending, startTransition] = useTransition();
   const [cancelOpen, setCancelOpen] = React.useState(false);
@@ -161,10 +167,12 @@ export function OrderActions({
           <CheckCircle2 className="size-3" />
           已完成
         </Badge>
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5" />
-          可互评
-        </span>
+        <ReviewDialog
+          dealType="ITEM"
+          dealId={dealId}
+          revieweeNickname={counterpartyNickname}
+          hasReviewed={hasReviewed}
+        />
       </div>
     );
   }

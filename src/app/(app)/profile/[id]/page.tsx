@@ -56,6 +56,48 @@ export default async function ProfilePage({
   });
   if (!user) notFound();
 
+  // 信誉聚合:仅统计已公开(revealed=true)且收方为本人的评价。
+  const [itemAgg, serviceAgg, recentReviews] = await Promise.all([
+    prisma.review.aggregate({
+      where: { revieweeId: id, revealed: true, dealType: "ITEM" },
+      _avg: { rating: true },
+      _count: { _all: true },
+    }),
+    prisma.review.aggregate({
+      where: {
+        revieweeId: id,
+        revealed: true,
+        dealType: { in: ["BOOKING", "NEED_MATCH"] },
+      },
+      _avg: { rating: true },
+      _count: { _all: true },
+    }),
+    prisma.review.findMany({
+      where: { revieweeId: id, revealed: true },
+      orderBy: { revealedAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        dealType: true,
+        rating: true,
+        content: true,
+        reviewer: { select: { nickname: true } },
+      },
+    }),
+  ]);
+
+  const itemAvg = itemAgg._avg.rating;
+  const itemCount = itemAgg._count._all;
+  const serviceAvg = serviceAgg._avg.rating;
+  const serviceCount = serviceAgg._count._all;
+  const totalReviews = itemCount + serviceCount;
+  // 综合信誉:所有已公开评价的加权平均。
+  const overallAvg =
+    totalReviews > 0
+      ? ((itemAvg ?? 0) * itemCount + (serviceAvg ?? 0) * serviceCount) /
+        totalReviews
+      : null;
+
   const avatarUrl = user.avatarKey
     ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL}/${user.avatarKey}`
     : null;
@@ -123,8 +165,16 @@ export default async function ProfilePage({
         <Card className={ANIM}>
           <CardContent className="p-0">
             <div className="grid grid-cols-3 divide-x divide-outline-variant/40">
-              <StatCell label="信誉" value="待评价" />
-              <StatCell label="发布数" value={0} numeric />
+              <StatCell
+                label="信誉"
+                value={
+                  overallAvg != null
+                    ? `${overallAvg.toFixed(1)} 分`
+                    : "暂无"
+                }
+                numeric
+              />
+              <StatCell label="评价数" value={totalReviews} numeric />
               <StatCell label="违规" value={user.violationCount} numeric />
             </div>
           </CardContent>
@@ -140,13 +190,44 @@ export default async function ProfilePage({
                 信誉与评价
               </CardTitle>
             </CardHeader>
-            <CardContent className="py-2">
-              <Empty className="border-transparent p-0">
-                <EmptyTitle className="text-sm">暂无评价</EmptyTitle>
-                <EmptyDescription>
-                  完成交易后，双方可互相评价。
-                </EmptyDescription>
-              </Empty>
+            <CardContent className="space-y-3 py-2">
+              <ReputationRow
+                label="物品交易信誉"
+                avg={itemAvg}
+                count={itemCount}
+              />
+              <ReputationRow
+                label="服务交易信誉"
+                avg={serviceAvg}
+                count={serviceCount}
+              />
+
+              {recentReviews.length > 0 ? (
+                <div className="space-y-2 pt-1">
+                  {recentReviews.map((r) => (
+                    <ReviewItem
+                      key={r.id}
+                      rating={r.rating}
+                      content={r.content}
+                      reviewerNickname={r.reviewer?.nickname}
+                      dealTypeLabel={
+                        r.dealType === "ITEM"
+                          ? "物品"
+                          : r.dealType === "BOOKING"
+                            ? "服务"
+                            : "需求"
+                      }
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Empty className="border-transparent p-0">
+                  <EmptyTitle className="text-sm">暂无评价</EmptyTitle>
+                  <EmptyDescription>
+                    完成交易后，双方可互相评价。
+                  </EmptyDescription>
+                </Empty>
+              )}
             </CardContent>
           </Card>
 
@@ -244,6 +325,90 @@ function StatCell({
         {value}
       </span>
       <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+/** 信誉汇总行:评分 + 条数 + 星级可视化。 */
+function ReputationRow({
+  label,
+  avg,
+  count,
+}: {
+  label: string;
+  avg: number | null;
+  count: number;
+}) {
+  const has = count > 0 && avg != null;
+  return (
+    <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-2">
+        {has ? (
+          <>
+            <span className="inline-flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  className={cn(
+                    "size-3.5",
+                    s <= Math.round(avg)
+                      ? "fill-warning text-warning"
+                      : "fill-transparent text-muted-foreground/30"
+                  )}
+                />
+              ))}
+            </span>
+            <span className="font-serif tabular-nums font-semibold text-foreground">
+              {avg.toFixed(1)}
+            </span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              ({count})
+            </span>
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground">暂无评价</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 单条已公开评价(星级 + 评价人 + 内容)。 */
+function ReviewItem({
+  rating,
+  content,
+  reviewerNickname,
+  dealTypeLabel,
+}: {
+  rating: number;
+  content: string | null;
+  reviewerNickname?: string;
+  dealTypeLabel: string;
+}) {
+  return (
+    <div className="rounded-lg bg-accent/50 px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-0.5">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <Star
+              key={s}
+              className={cn(
+                "size-3.5",
+                s <= rating
+                  ? "fill-warning text-warning"
+                  : "fill-transparent text-muted-foreground/30"
+              )}
+            />
+          ))}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {reviewerNickname ?? "匿名用户"} · {dealTypeLabel}
+        </span>
+      </div>
+      {content ? (
+        <p className="mt-1.5 text-sm text-foreground/80">{content}</p>
+      ) : null}
     </div>
   );
 }

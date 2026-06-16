@@ -169,6 +169,13 @@ export default async function MyBookingsPage({
     },
   });
 
+  // 我已评价的预约(用于设置 hasReviewed)。
+  const bookingsReviewed = await prisma.review.findMany({
+    where: { reviewerId: viewerId, dealType: "BOOKING" },
+    select: { dealId: true },
+  });
+  const reviewedBookingIds = new Set(bookingsReviewed.map((r) => r.dealId));
+
   // 过滤当前 tab:incoming = 我是提供者;outgoing = 我是客户。
   const list = bookings.filter((b) =>
     tab === "incoming"
@@ -290,6 +297,8 @@ export default async function MyBookingsPage({
                       isCanceller={isCanceller}
                       hasFirstConfirmer={!!b.firstConfirmerId}
                       rejectReason={b.rejectReason}
+                      counterpartyNickname={counterparty}
+                      hasReviewed={reviewedBookingIds.has(b.id)}
                     />
                   </div>
                 </CardContent>

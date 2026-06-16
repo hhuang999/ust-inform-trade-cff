@@ -40,6 +40,7 @@ import {
   type CurrentDeal,
   type InterestSummary,
 } from "./item-detail-actions";
+import { ReportDialog } from "@/components/site/report-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -390,6 +391,11 @@ export default async function ItemDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {/* 举报 */}
+          <div className="flex justify-end">
+            <ReportDialog targetType="ITEM" targetId={item.id} />
+          </div>
         </aside>
       </div>
     </PageContainer>

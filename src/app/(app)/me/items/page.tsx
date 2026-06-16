@@ -107,7 +107,7 @@ export default async function MyItemsPage({
   const tab: Tab = TABS.some((t) => t.value === tabRaw) ? (tabRaw as Tab) : "selling";
 
   // ── 并行查询三个数据源 ──
-  const [sellingItems, wantedInterests, deals] = await Promise.all([
+  const [sellingItems, wantedInterests, deals, dealsReviewed] = await Promise.all([
     // 我发布的:我的物品 + 意向人数 + 当前交易状态。
     prisma.item.findMany({
       where: { sellerId: viewerId },
@@ -142,7 +142,14 @@ export default async function MyItemsPage({
         buyer: { select: { id: true, nickname: true } },
       },
     }),
+    // 我作为评价人已提交的物品交易评价(用于设置 hasReviewed)。
+    prisma.review.findMany({
+      where: { reviewerId: viewerId, dealType: "ITEM" },
+      select: { dealId: true },
+    }),
   ]);
+
+  const reviewedDealIds = new Set(dealsReviewed.map((r) => r.dealId));
 
   // 我想要的:过滤掉已售出/关闭(除非是自己拥有的物品)。
   const wantedList = wantedInterests.filter(
@@ -385,6 +392,8 @@ export default async function MyItemsPage({
                         firstConfirmerId={deal.firstConfirmerId}
                         viewerId={viewerId}
                         completedAt={deal.completedAt?.toISOString() ?? null}
+                        counterpartyNickname={counterparty.nickname}
+                        hasReviewed={reviewedDealIds.has(deal.id)}
                       />
                     </div>
                   </CardContent>

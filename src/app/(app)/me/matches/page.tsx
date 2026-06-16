@@ -124,11 +124,18 @@ export default async function MyMatchesPage({
     orderBy: { updatedAt: "desc" },
     include: {
       need: {
-        select: { id: true, title: true, requesterId: true },
+        select: { id: true, title: true, requesterId: true, requester: { select: { nickname: true } } },
       },
       provider: { select: { id: true, nickname: true } },
     },
   });
+
+  // 我已评价的对接(用于设置 hasReviewed)。
+  const matchesReviewed = await prisma.review.findMany({
+    where: { reviewerId: viewerId, dealType: "NEED_MATCH" },
+    select: { dealId: true },
+  });
+  const reviewedMatchIds = new Set(matchesReviewed.map((r) => r.dealId));
 
   // 过滤当前 tab:incoming = 我是提供者;outgoing = 我是发布者(需求方)。
   const list = matches.filter((m) =>
@@ -245,6 +252,10 @@ export default async function MyMatchesPage({
                       isViewerFirstConfirmer={isViewerFirstConfirmer}
                       isCanceller={isCanceller}
                       hasFirstConfirmer={!!m.firstConfirmerId}
+                      counterpartyNickname={
+                        isProvider ? m.need.requester.nickname : m.provider.nickname
+                      }
+                      hasReviewed={reviewedMatchIds.has(m.id)}
                     />
                   </div>
                 </CardContent>

@@ -30,6 +30,7 @@ import {
   decideNeedMatchLiability,
   requestCancelNeedMatch,
 } from "@/app/(app)/needs/actions";
+import { ReviewDialog } from "@/components/site/review-dialog";
 
 type MatchStatus =
   | "APPLIED"
@@ -46,6 +47,10 @@ export interface MatchActionsProps {
   isViewerFirstConfirmer: boolean;
   isCanceller: boolean;
   hasFirstConfirmer: boolean;
+  /** 对方昵称(评价入口展示用)。 */
+  counterpartyNickname?: string;
+  /** 当前用户是否已对该对接评价过。 */
+  hasReviewed?: boolean;
 }
 
 /**
@@ -66,6 +71,8 @@ export function MatchActions({
   isViewerFirstConfirmer,
   isCanceller,
   hasFirstConfirmer,
+  counterpartyNickname,
+  hasReviewed,
 }: MatchActionsProps) {
   const [pending, startTransition] = useTransition();
   const [cancelOpen, setCancelOpen] = React.useState(false);
@@ -239,10 +246,12 @@ export function MatchActions({
           <CheckCircle2 className="size-3" />
           已完成
         </Badge>
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5" />
-          可互评
-        </span>
+        <ReviewDialog
+          dealType="NEED_MATCH"
+          dealId={matchId}
+          revieweeNickname={counterpartyNickname}
+          hasReviewed={hasReviewed}
+        />
       </div>
     );
   }

@@ -32,6 +32,7 @@ import {
   rejectBooking,
   requestCancelBooking,
 } from "@/app/(app)/services/actions";
+import { ReviewDialog } from "@/components/site/review-dialog";
 
 type BookingStatus =
   | "PENDING"
@@ -53,6 +54,10 @@ export interface BookingActionsProps {
   hasFirstConfirmer: boolean;
   /** 拒绝原因(REJECTED 时展示)。 */
   rejectReason?: string | null;
+  /** 对方昵称(评价入口展示用)。 */
+  counterpartyNickname?: string;
+  /** 当前用户是否已对该预约评价过。 */
+  hasReviewed?: boolean;
 }
 
 /**
@@ -74,6 +79,8 @@ export function BookingActions({
   isCanceller,
   hasFirstConfirmer,
   rejectReason,
+  counterpartyNickname,
+  hasReviewed,
 }: BookingActionsProps) {
   const [pending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = React.useState(false);
@@ -351,10 +358,12 @@ export function BookingActions({
           <CheckCircle2 className="size-3" />
           已完成
         </Badge>
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5" />
-          可互评
-        </span>
+        <ReviewDialog
+          dealType="BOOKING"
+          dealId={bookingId}
+          revieweeNickname={counterpartyNickname}
+          hasReviewed={hasReviewed}
+        />
       </div>
     );
   }

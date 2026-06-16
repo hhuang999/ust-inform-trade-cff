@@ -29,6 +29,7 @@ import {
   type ActiveBooking,
   type SlotSummary,
 } from "./service-detail-actions";
+import { ReportDialog } from "@/components/site/report-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -400,6 +401,11 @@ export default async function ServiceDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {/* 举报 */}
+          <div className="flex justify-end">
+            <ReportDialog targetType="SERVICE" targetId={service.id} />
+          </div>
         </aside>
       </div>
     </PageContainer>

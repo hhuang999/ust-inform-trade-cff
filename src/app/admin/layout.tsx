@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { SiteHeader } from "@/components/layout/site-header";
+import { AdminNav } from "./admin-nav";
 
 export default async function AdminLayout({
   children,
@@ -19,6 +20,7 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader user={user} />
+      <AdminNav />
       <main className="flex-1">{children}</main>
     </div>
   );
