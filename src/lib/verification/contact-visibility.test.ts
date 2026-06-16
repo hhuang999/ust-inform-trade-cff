@@ -4,8 +4,8 @@ import { resolveContactInfo } from "@/lib/verification/contact-visibility";
 describe("resolveContactInfo", () => {
   const info = "wechat: abc123";
 
-  it("EVERYONE: 未登录也能看到", () => {
-    expect(resolveContactInfo({ visibility: "EVERYONE", contactInfo: info, viewerVerified: null })).toBe(info);
+  it("ALL: 未登录也能看到", () => {
+    expect(resolveContactInfo({ visibility: "ALL", contactInfo: info, viewerVerified: null })).toBe(info);
   });
 
   it("VERIFIED_ONLY: 未登录看不到", () => {
@@ -21,6 +21,6 @@ describe("resolveContactInfo", () => {
   });
 
   it("无联系方式时始终返回 null", () => {
-    expect(resolveContactInfo({ visibility: "EVERYONE", contactInfo: undefined, viewerVerified: true })).toBeNull();
+    expect(resolveContactInfo({ visibility: "ALL", contactInfo: undefined, viewerVerified: true })).toBeNull();
   });
 });

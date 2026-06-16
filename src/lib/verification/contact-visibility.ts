@@ -1,4 +1,4 @@
-export type ContactVisibility = "VERIFIED_ONLY" | "EVERYONE";
+export type ContactVisibility = "VERIFIED_ONLY" | "ALL";
 
 export interface ContactContext {
   visibility: ContactVisibility;
@@ -7,11 +7,12 @@ export interface ContactContext {
   viewerVerified: boolean | null;
 }
 
-/** 按可见性策略 + 当前用户认证态,决定是否返回联系方式 */
+/** 按可见性策略 + 当前用户认证态,决定是否返回联系方式。
+ *  对齐 Prisma `ContactVisibility` 枚举(VERIFIED_ONLY | ALL)。 */
 export function resolveContactInfo(ctx: ContactContext): string | null {
   const { visibility, contactInfo, viewerVerified } = ctx;
   if (!contactInfo) return null;
-  if (visibility === "EVERYONE") return contactInfo;
+  if (visibility === "ALL") return contactInfo;
   // VERIFIED_ONLY
   return viewerVerified === true ? contactInfo : null;
 }
