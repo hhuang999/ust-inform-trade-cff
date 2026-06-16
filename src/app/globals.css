@@ -1,67 +1,115 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
- * Design system — "Refined academic trust"
- * Light-first, indigo brand, semantic verification colors, intentional dark mode.
+ * Design system — "纸感风" (paper-feel)
+ * Warm paper, humanistic serif headings, soft brown shadows, quiet reading.
+ * Reference: coze/DESIGN.md. Light-first; dark = warm-brown-ink (never cold tech blue).
+ * Backward-compat aliases (--brand*) kept so the legacy indigo components keep compiling
+ * until Phase 1 migrates them to cva + --primary.
  */
 
 :root {
-  /* Neutral surfaces */
-  --background: #f7f8fb;
-  --foreground: #0f172a;
+  /* Surfaces */
+  --background: #fbf3e7;
+  --foreground: #31251b;
+  --card: #fff9f1;
+  --card-foreground: #31251b;
+  --popover: #fff9f1;
+  --popover-foreground: #31251b;
 
-  --card: #ffffff;
-  --card-foreground: #0f172a;
+  --primary: #c96f3d;
+  --primary-foreground: #ffffff;
 
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --secondary: #f2e6d0;
+  --secondary-foreground: #31251b;
 
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #6366f1;
+  --muted: #f2e6d0;
+  --muted-foreground: #8b7662;
 
-  /* Brand (indigo) */
-  --brand: #4f46e5;
-  --brand-foreground: #ffffff;
-  --brand-strong: #4338ca;
+  --accent: #f5dcc8;
+  --accent-foreground: #31251b;
 
-  /* Semantic — verification state */
-  --verified: #059669;
-  --verified-soft: #d1fae5;
-  --pending: #d97706;
-  --pending-soft: #fef3c7;
-  --rejected: #e11d48;
-  --rejected-soft: #ffe4e6;
-  --unverified: #64748b;
-  --unverified-soft: #f1f5f9;
+  --destructive: #c84a3d;
+  --destructive-foreground: #ffffff;
 
-  --shadow-color: 220 40% 25%;
+  --border: #dcc8a8;
+  --input: #dcc8a8;
+  --ring: #c96f3d;
+
+  /* Multi-level surface (Material-3 style, from coze prototype) */
+  --surface: #fff9f1;
+  --surface-container-lowest: #fffcf7;
+  --surface-container: #f2e6d0;
+  --surface-container-high: #ead9bc;
+  --surface-container-highest: #dec9a4;
+  --primary-container: #f5dcc8;
+  --on-surface: #31251b;
+  --on-surface-variant: #8b7662;
+  --outline: #c9b89c;
+  --outline-variant: #dcc8a8;
+
+  --success: #7e9f7a;
+  --warning: #d4a356;
+  --error: #c84a3d;
+
+  /* Semantic — verification state (names preserved, values paper-tuned) */
+  --verified: #7e9f7a;
+  --verified-soft: rgba(126, 159, 122, 0.15);
+  --pending: #d4a356;
+  --pending-soft: rgba(212, 163, 86, 0.15);
+  --rejected: #c84a3d;
+  --rejected-soft: rgba(200, 74, 61, 0.15);
+  --unverified: #8b7662;
+  --unverified-soft: rgba(139, 118, 98, 0.12);
+
+  /* Backward-compat brand aliases (legacy components) — map to new primary */
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+  --brand-strong: #b05a2e;
+
+  --radius: 0.75rem;
+
+  --shadow-color: 32 35% 62%;
 }
 
 @theme inline {
-  /* Surfaces / typography */
+  /* Color utilities */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* CJK-aware sans stack so Chinese renders crisply, latin uses Geist */
-  --font-sans: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei",
-    "Hiragino Sans GB", "Source Han Sans SC", "Noto Sans CJK SC", system-ui,
-    sans-serif;
-  --font-mono: var(--font-geist-mono), "SFMono-Regular", ui-monospace, monospace;
+  --color-surface: var(--surface);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-primary-container: var(--primary-container);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
 
-  /* Brand */
-  --color-brand: var(--brand);
-  --color-brand-fg: var(--brand-foreground);
-  --color-brand-strong: var(--brand-strong);
-
-  /* Semantic */
+  /* Semantic verification colors */
   --color-verified: var(--verified);
   --color-verified-soft: var(--verified-soft);
   --color-pending: var(--pending);
@@ -71,44 +119,86 @@
   --color-unverified: var(--unverified);
   --color-unverified-soft: var(--unverified-soft);
 
-  /* Radius + elevation rhythm */
-  --radius: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-sm: 0.5rem;
+  /* Backward-compat brand color utilities */
+  --color-brand: var(--brand);
+  --color-brand-fg: var(--brand-foreground);
+  --color-brand-strong: var(--brand-strong);
 
-  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06);
-  --shadow-md: 0 4px 12px -2px hsl(var(--shadow-color) / 0.08),
-    0 2px 6px -2px hsl(var(--shadow-color) / 0.06);
-  --shadow-lg: 0 16px 40px -12px hsl(var(--shadow-color) / 0.16),
-    0 4px 12px -4px hsl(var(--shadow-color) / 0.08);
+  /* Typography — serif headings (Latin Lora + system CJK serif), sans body */
+  --font-sans: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei",
+    "Hiragino Sans GB", "Source Han Sans SC", "Noto Sans CJK SC", system-ui,
+    sans-serif;
+  --font-serif: var(--font-serif-google), "Georgia", "Source Han Serif SC",
+    "Songti SC", "STSong", serif;
+  --font-mono: var(--font-geist-mono), "SFMono-Regular", ui-monospace, monospace;
+
+  /* Radius scale (absolute, soft) */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.75rem;
+  --radius-full: 9999px;
+
+  /* Shadows — warm brown, three tiers */
+  --shadow-sm: 0 2px 8px rgba(193, 165, 124, 0.1);
+  --shadow-md: 0 2px 8px rgba(193, 165, 124, 0.12);
+  --shadow-lg: 0 8px 24px rgba(193, 165, 124, 0.18);
+  --shadow-card: 0 2px 8px rgba(193, 165, 124, 0.12);
+  --shadow-float: 0 8px 24px rgba(193, 165, 124, 0.18);
+  --shadow-dialog: 0 20px 40px rgba(193, 165, 124, 0.22);
 }
 
-/* Refined dark mode — deep slate, never the raw #0a0a0a default */
+/* Warm-brown-ink dark mode (never cold tech blue) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b1120;
-    --foreground: #e6edf6;
+    --background: #2a2118;
+    --foreground: #f5e9d6;
+    --card: #332a20;
+    --card-foreground: #f5e9d6;
+    --popover: #332a20;
+    --popover-foreground: #f5e9d6;
 
-    --card: #111a2e;
-    --card-foreground: #e6edf6;
+    --primary: #e08a4b;
+    --primary-foreground: #2a2118;
 
-    --muted: #16223b;
-    --muted-foreground: #94a3b8;
+    --secondary: #3d3225;
+    --secondary-foreground: #f5e9d6;
+    --muted: #3d3225;
+    --muted-foreground: #b8a68a;
+    --accent: #5a4a36;
+    --accent-foreground: #f5e9d6;
 
-    --border: #233049;
-    --input: #233049;
-    --ring: #818cf8;
+    --destructive: #e07060;
+    --destructive-foreground: #2a2118;
 
-    --brand: #6366f1;
-    --brand-foreground: #ffffff;
-    --brand-strong: #4f46e5;
+    --border: #4a3d2e;
+    --input: #4a3d2e;
+    --ring: #e08a4b;
 
-    --verified-soft: #064e3b;
-    --pending-soft: #451a03;
-    --rejected-soft: #4c0519;
-    --unverified-soft: #1e293b;
+    --surface: #332a20;
+    --surface-container-lowest: #241c14;
+    --surface-container: #3d3225;
+    --surface-container-high: #4a3d2e;
+    --surface-container-highest: #5a4a36;
+    --primary-container: #5a4a36;
+    --on-surface: #f5e9d6;
+    --on-surface-variant: #b8a68a;
+    --outline: #5a4a36;
+    --outline-variant: #4a3d2e;
 
-    --shadow-color: 222 60% 4%;
+    --success: #9cb897;
+    --warning: #e0bc7a;
+    --error: #e07060;
+
+    --verified-soft: rgba(156, 184, 151, 0.18);
+    --pending-soft: rgba(224, 188, 122, 0.18);
+    --rejected-soft: rgba(224, 112, 96, 0.18);
+    --unverified-soft: rgba(184, 166, 138, 0.15);
+
+    --brand: var(--primary);
+    --brand-strong: #c9763f;
   }
 }
 

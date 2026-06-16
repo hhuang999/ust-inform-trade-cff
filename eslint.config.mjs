@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Reference design project (separate Next app, not part of our build)
+    "coze/**",
   ]),
 ]);
 
