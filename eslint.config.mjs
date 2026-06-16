@@ -15,6 +15,13 @@ const eslintConfig = defineConfig([
     // Reference design project (separate Next app, not part of our build)
     "coze/**",
   ]),
+  {
+    rules: {
+      // shadcn-vendored components (e.g. carousel/useCarousel) intentionally
+      // sync external embla state via setState-in-effect; treat as advisory.
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;
