@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { ShieldAlert, Star, Package, Wrench, Search } from "lucide-react";
 
@@ -57,7 +59,7 @@ export default async function ProfilePage({
   if (!user) notFound();
 
   // 信誉聚合:仅统计已公开(revealed=true)且收方为本人的评价。
-  const [itemAgg, serviceAgg, recentReviews] = await Promise.all([
+  const [itemAgg, serviceAgg, recentReviews, historyItems, historyServices, historyNeeds] = await Promise.all([
     prisma.review.aggregate({
       where: { revieweeId: id, revealed: true, dealType: "ITEM" },
       _avg: { rating: true },
@@ -83,6 +85,25 @@ export default async function ProfilePage({
         content: true,
         reviewer: { select: { nickname: true } },
       },
+    }),
+    // 发布历史(PRD §2.5):排除软删除。
+    prisma.item.findMany({
+      where: { sellerId: id, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { id: true, title: true, priceMode: true, price: true },
+    }),
+    prisma.service.findMany({
+      where: { providerId: id, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { id: true, title: true, price: true },
+    }),
+    prisma.need.findMany({
+      where: { requesterId: id, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { id: true, title: true, status: true },
     }),
   ]);
 
@@ -277,21 +298,41 @@ export default async function ProfilePage({
               </TabsList>
 
               <TabsContent value="items" className="mt-3">
-                <HistoryEmpty
-                  icon={<Package className="size-6" />}
-                  hint="暂无发布的物品"
+                <HistoryList
+                  rows={historyItems.map((i) => ({
+                    href: `/items/${i.id}`,
+                    title: i.title,
+                    meta: renderPrice(i.priceMode, i.price),
+                  }))}
+                  emptyIcon={<Package className="size-6" />}
+                  emptyHint="暂无发布的物品"
                 />
               </TabsContent>
               <TabsContent value="services" className="mt-3">
-                <HistoryEmpty
-                  icon={<Wrench className="size-6" />}
-                  hint="暂无发布的服务"
+                <HistoryList
+                  rows={historyServices.map((s) => ({
+                    href: `/services/${s.id}`,
+                    title: s.title,
+                    meta: s.price,
+                  }))}
+                  emptyIcon={<Wrench className="size-6" />}
+                  emptyHint="暂无发布的服务"
                 />
               </TabsContent>
               <TabsContent value="needs" className="mt-3">
-                <HistoryEmpty
-                  icon={<Search className="size-6" />}
-                  hint="暂无发布的求购"
+                <HistoryList
+                  rows={historyNeeds.map((n) => ({
+                    href: `/needs/${n.id}`,
+                    title: n.title,
+                    meta:
+                      n.status === "OPEN"
+                        ? "开放中"
+                        : n.status === "PAUSED"
+                          ? "已暂停"
+                          : "已关闭",
+                  }))}
+                  emptyIcon={<Search className="size-6" />}
+                  emptyHint="暂无发布的求购"
                 />
               </TabsContent>
             </Tabs>
@@ -423,21 +464,59 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Empty state used inside each history tab. */
-function HistoryEmpty({
-  icon,
-  hint,
+interface HistoryRow {
+  href: string;
+  title: string;
+  meta: string;
+}
+
+/** 发布历史列表(每个 tab 一组;空态走 Empty)。 */
+function HistoryList({
+  rows,
+  emptyIcon,
+  emptyHint,
 }: {
-  icon: React.ReactNode;
-  hint: string;
+  rows: HistoryRow[];
+  emptyIcon: ReactNode;
+  emptyHint: string;
 }) {
+  if (rows.length === 0) {
+    return (
+      <Empty className="border-dashed py-8">
+        <EmptyMedia variant="icon">{emptyIcon}</EmptyMedia>
+        <EmptyTitle className="text-sm">{emptyHint}</EmptyTitle>
+        <EmptyDescription>该用户暂未发布相关内容。</EmptyDescription>
+      </Empty>
+    );
+  }
   return (
-    <Empty className="border-dashed py-8">
-      <EmptyMedia variant="icon">{icon}</EmptyMedia>
-      <EmptyTitle className="text-sm">{hint}</EmptyTitle>
-      <EmptyDescription>相关数据将在后续阶段接入。</EmptyDescription>
-    </Empty>
+    <ul className="divide-y divide-outline-variant/40">
+      {rows.map((r) => (
+        <li key={r.href}>
+          <Link
+            href={r.href}
+            className="flex items-center justify-between gap-3 py-2.5 text-sm transition-colors hover:text-primary"
+          >
+            <span className="min-w-0 truncate font-medium">{r.title}</span>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              {r.meta}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
+}
+
+/** 价格文案:免费 / 面议 / ¥金额。 */
+function renderPrice(
+  priceMode: "SPECIFIC" | "FREE" | "NEGOTIABLE",
+  price?: number | null,
+): string {
+  if (priceMode === "FREE") return "免费";
+  if (priceMode === "NEGOTIABLE") return "面议";
+  if (typeof price === "number") return `¥${price.toLocaleString("zh-CN")}`;
+  return "面议";
 }
 
 function formatDate(d: Date): string {

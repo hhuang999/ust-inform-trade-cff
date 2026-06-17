@@ -33,6 +33,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 12;
 const SORT_OPTIONS = [
   { value: "latest", label: "最新发布" },
+  { value: "oldest", label: "最早发布" },
   { value: "price_asc", label: "价格从低到高" },
   { value: "price_desc", label: "价格从高到低" },
 ] as const;
@@ -41,6 +42,13 @@ type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 function parsePage(v: unknown): number {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.floor(n);
+}
+
+/** 解析价格筛选值(非负整数);非法返回 undefined。 */
+function parsePrice(v: unknown): number | undefined {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return undefined;
   return Math.floor(n);
 }
 
@@ -71,6 +79,8 @@ export default async function ItemsPage({
   const sort: SortValue = (SORT_OPTIONS.find((o) => o.value === sortRaw)?.value ??
     "latest") as SortValue;
   const includePending = sp.includePending === "true";
+  const minPrice = parsePrice(sp.minPrice);
+  const maxPrice = parsePrice(sp.maxPrice);
   const page = parsePage(sp.page);
 
   // ── 查询条件 ──
@@ -81,6 +91,14 @@ export default async function ItemsPage({
     status: { in: status },
     deletedAt: null,
     ...(category ? { category } : {}),
+    ...(minPrice != null || maxPrice != null
+      ? {
+          price: {
+            ...(minPrice != null ? { gte: minPrice } : {}),
+            ...(maxPrice != null ? { lte: maxPrice } : {}),
+          },
+        }
+      : {}),
     ...(search
       ? {
           OR: [
@@ -96,7 +114,9 @@ export default async function ItemsPage({
       ? [{ price: "asc" }, { createdAt: "desc" }]
       : sort === "price_desc"
         ? [{ price: "desc" }, { createdAt: "desc" }]
-        : [{ createdAt: "desc" }];
+        : sort === "oldest"
+          ? [{ createdAt: "asc" }]
+          : [{ createdAt: "desc" }];
 
   const [total, items] = await Promise.all([
     prisma.item.count({ where }),
@@ -125,6 +145,8 @@ export default async function ItemsPage({
     category: category,
     sort: sort !== "latest" ? sort : undefined,
     includePending: includePending ? "true" : undefined,
+    minPrice: minPrice != null ? String(minPrice) : undefined,
+    maxPrice: maxPrice != null ? String(maxPrice) : undefined,
   };
 
   return (
@@ -172,13 +194,30 @@ export default async function ItemsPage({
 
       {/* ── 搜索 + 排序(GET 表单,无客户端 JS) ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <form action="/items" method="get" className="flex w-full max-w-sm items-center gap-2">
+        <form action="/items" method="get" className="flex w-full max-w-xl flex-wrap items-center gap-2">
           <Input
             name="search"
             type="search"
             defaultValue={search}
             placeholder="搜索物品标题或描述"
-            className="flex-1"
+            className="min-w-[12rem] flex-1"
+          />
+          <Input
+            name="minPrice"
+            type="number"
+            min={0}
+            defaultValue={minPrice ?? ""}
+            placeholder="最低价"
+            className="w-24"
+          />
+          <span className="text-muted-foreground">—</span>
+          <Input
+            name="maxPrice"
+            type="number"
+            min={0}
+            defaultValue={maxPrice ?? ""}
+            placeholder="最高价"
+            className="w-24"
           />
           {/* 保留当前筛选态 */}
           {category ? <input type="hidden" name="category" value={category} /> : null}
@@ -187,7 +226,7 @@ export default async function ItemsPage({
             <input type="hidden" name="includePending" value="true" />
           ) : null}
           <Button type="submit" variant="outline">
-            搜索
+            筛选
           </Button>
         </form>
 
@@ -211,6 +250,8 @@ export default async function ItemsPage({
             ))}
           </select>
           {/* 保留当前筛选态 */}
+          {minPrice != null ? <input type="hidden" name="minPrice" value={minPrice} /> : null}
+          {maxPrice != null ? <input type="hidden" name="maxPrice" value={maxPrice} /> : null}
           {search ? <input type="hidden" name="search" value={search} /> : null}
           {category ? <input type="hidden" name="category" value={category} /> : null}
           {includePending ? (
