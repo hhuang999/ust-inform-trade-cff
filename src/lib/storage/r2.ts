@@ -1,5 +1,5 @@
-import { S3Client } from "@aws-sdk/client-s3";
-import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const accountId = process.env.R2_ACCOUNT_ID!;
 
@@ -15,23 +15,31 @@ export const r2 = new S3Client({
 export interface PresignOptions {
   bucket: string;
   key: string;
-  /** 最大字节数 */
-  maxBytes: number;
-  /** 允许的 MIME 前缀,如 "image/" */
-  contentTypePrefix: string;
+  /** MIME 类型(须 image/*);签名进 PUT,客户端须以相同 Content-Type 上传 */
+  contentType: string;
 }
 
-/** 生成预签名 POST,在 R2 侧强制 MIME 前缀 + 大小上限。客户端需自行追加 Content-Type(见 Task 14)。*/
-export async function presignUpload(opts: PresignOptions) {
-  return createPresignedPost(r2, {
-    Bucket: opts.bucket,
-    Key: opts.key,
-    Conditions: [
-      ["content-length-range", 0, opts.maxBytes],
-      ["starts-with", "$Content-Type", opts.contentTypePrefix],
-    ],
-    Expires: 60,
-  });
+/**
+ * 生成预签名 PUT URL。Cloudflare R2 **不支持** S3 presigned POST(policy),
+ * 故改用 SigV4 预签名 PUT(R2 完整支持)。
+ *
+ * - Content-Type 签名进 URL,客户端上传须带完全一致的 Content-Type,否则 R2 拒绝。
+ * - 体积上限:PUT 不像 POST policy 能在 R2 侧用 content-length-range 强制,
+ *   故由客户端校验(见各表单的 MAX_IMAGE_BYTES)。
+ */
+export async function presignPut(
+  opts: PresignOptions
+): Promise<{ url: string; key: string }> {
+  const url = await getSignedUrl(
+    r2,
+    new PutObjectCommand({
+      Bucket: opts.bucket,
+      Key: opts.key,
+      ContentType: opts.contentType,
+    }),
+    { expiresIn: 60 }
+  );
+  return { url, key: opts.key };
 }
 
 export const BUCKETS = {
@@ -39,4 +47,4 @@ export const BUCKETS = {
   private: process.env.R2_BUCKET_PRIVATE!,
 };
 
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB(客户端校验用)

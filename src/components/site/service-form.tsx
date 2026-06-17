@@ -274,37 +274,31 @@ export default function ServiceForm({
     return true;
   }
 
-  async function getPresign(): Promise<{
-    post: { url: string; fields: Record<string, string> };
-    key: string;
-  } | null> {
+  async function getPresign(
+    file: File
+  ): Promise<{ url: string; key: string } | null> {
     try {
       const res = await fetch("/api/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purpose: "item" }),
+        body: JSON.stringify({ purpose: "item", contentType: file.type }),
       });
       if (!res.ok) throw new Error("presign failed");
-      return (await res.json()) as {
-        post: { url: string; fields: Record<string, string> };
-        key: string;
-      };
+      return (await res.json()) as { url: string; key: string };
     } catch {
       toast.error("无法获取上传凭证，请稍后再试");
       return null;
     }
   }
 
-  async function uploadToR2(
-    post: { url: string; fields: Record<string, string> },
-    file: File
-  ): Promise<boolean> {
+  /** R2 不支持 presigned POST,改用预签名 PUT 直传(带签名 Content-Type)。 */
+  async function uploadToR2(url: string, file: File): Promise<boolean> {
     try {
-      const form = new FormData();
-      Object.entries(post.fields).forEach(([k, v]) => form.append(k, v));
-      form.append("Content-Type", file.type);
-      form.append("file", file);
-      const res = await fetch(post.url, { method: "POST", body: form });
+      const res = await fetch(url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
       if (!res.ok) throw new Error("upload failed");
       return true;
     } catch {
@@ -341,13 +335,13 @@ export default function ServiceForm({
 
     for (let i = 0; i < valid.length; i++) {
       const file = valid[i];
-      const presigned = await getPresign();
+      const presigned = await getPresign(file);
       if (!presigned) {
         setImages((prev) => prev.filter((img) => img.key !== placeholders[i].key));
         toast.error("图片上传失败，请重试");
         continue;
       }
-      const ok = await uploadToR2(presigned.post, file);
+      const ok = await uploadToR2(presigned.url, file);
       if (ok) {
         setImages((prev) => {
           const next = [...prev];

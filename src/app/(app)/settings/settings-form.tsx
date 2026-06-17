@@ -80,19 +80,17 @@ export default function SettingsForm({
 
   /** 请求 presign;网络/R2 凭据缺失时返回 null 并 toast。 */
   async function getPresign(
-    purpose: "avatar" | "student-id"
-  ): Promise<{ post: { url: string; fields: Record<string, string> }; key: string } | null> {
+    purpose: "avatar" | "student-id",
+    file: File
+  ): Promise<{ url: string; key: string } | null> {
     try {
       const res = await fetch("/api/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purpose }),
+        body: JSON.stringify({ purpose, contentType: file.type }),
       });
       if (!res.ok) throw new Error("presign failed");
-      return (await res.json()) as {
-        post: { url: string; fields: Record<string, string> };
-        key: string;
-      };
+      return (await res.json()) as { url: string; key: string };
     } catch {
       // R2 凭据缺失 / presign 失败时优雅降级
       toast.error("无法获取上传凭证，请稍后再试");
@@ -100,17 +98,14 @@ export default function SettingsForm({
     }
   }
 
-  /** PUT 上传到 presigned POST,失败 toast。 */
-  async function uploadToR2(
-    post: { url: string; fields: Record<string, string> },
-    file: File
-  ): Promise<boolean> {
+  /** 预签名 PUT 直传(R2 不支持 presigned POST),失败 toast。 */
+  async function uploadToR2(url: string, file: File): Promise<boolean> {
     try {
-      const form = new FormData();
-      Object.entries(post.fields).forEach(([k, v]) => form.append(k, v));
-      form.append("Content-Type", file.type); // 匹配 presign 的 starts-with image/ 条件
-      form.append("file", file); // file 必须最后追加
-      const res = await fetch(post.url, { method: "POST", body: form });
+      const res = await fetch(url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
       if (!res.ok) throw new Error("upload failed");
       return true;
     } catch {
@@ -126,7 +121,7 @@ export default function SettingsForm({
     if (!file) return;
     if (!validateImage(file)) return;
 
-    const presigned = await getPresign("avatar");
+    const presigned = await getPresign("avatar", file);
     if (!presigned) return;
 
     setAvatarUploading(true);
@@ -141,7 +136,7 @@ export default function SettingsForm({
       120
     );
 
-    const ok = await uploadToR2(presigned.post, file);
+    const ok = await uploadToR2(presigned.url, file);
     clearInterval(tick);
     setAvatarProgress(100);
 
@@ -178,9 +173,9 @@ export default function SettingsForm({
 
     const uploaded: UploadedPhoto[] = [];
     for (const file of valid) {
-      const presigned = await getPresign("student-id");
+      const presigned = await getPresign("student-id", file);
       if (!presigned) break;
-      const ok = await uploadToR2(presigned.post, file);
+      const ok = await uploadToR2(presigned.url, file);
       if (ok) {
         uploaded.push({
           key: presigned.key,
