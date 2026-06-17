@@ -38,7 +38,12 @@ export async function GET(req: Request) {
     const expiredDeals = await prisma.itemDeal.findMany({
       where: {
         status: "PENDING",
-        firstConfirmedAt: { not: null, lt: sevenDaysAgo },
+        OR: [
+          // 一方已确认完成,另一方 7 天未确认。
+          { firstConfirmedAt: { not: null, lt: sevenDaysAgo } },
+          // 双方均未确认,选定 7 天后自动完成。
+          { firstConfirmedAt: null, createdAt: { lt: sevenDaysAgo } },
+        ],
       },
       select: { id: true, itemId: true, sellerId: true, buyerId: true },
     });
@@ -82,7 +87,11 @@ export async function GET(req: Request) {
     const expiredBookings = await prisma.booking.findMany({
       where: {
         status: "CONFIRMED",
-        firstConfirmedAt: { lt: sevenDaysAgo },
+        OR: [
+          { firstConfirmedAt: { not: null, lt: sevenDaysAgo } },
+          // 双方均未确认完成,确认预约 7 天后自动完成。
+          { firstConfirmedAt: null, updatedAt: { lt: sevenDaysAgo } },
+        ],
       },
       select: { id: true, clientId: true, serviceId: true },
     });
@@ -124,7 +133,11 @@ export async function GET(req: Request) {
     const expiredMatches = await prisma.needMatch.findMany({
       where: {
         status: "MATCHED",
-        firstConfirmedAt: { lt: sevenDaysAgo },
+        OR: [
+          { firstConfirmedAt: { not: null, lt: sevenDaysAgo } },
+          // 双方均未确认,撮合 7 天后自动完成。
+          { firstConfirmedAt: null, matchedAt: { lt: sevenDaysAgo } },
+        ],
       },
       select: { id: true, providerId: true, needId: true },
     });
@@ -271,7 +284,7 @@ export async function GET(req: Request) {
             .map((userId) =>
               notify({
                 userId,
-                type: "service_cancel_violation",
+                type: "need_cancel_violation",
                 title: "取消已生效",
                 body: "取消已生效(计违规)",
                 link: "/me/matches",

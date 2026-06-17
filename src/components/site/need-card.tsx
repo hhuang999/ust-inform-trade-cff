@@ -20,6 +20,7 @@ export interface NeedCardProps {
   formatPreference: string;
   reward: string;
   requesterNickname: string;
+  requesterRating?: number | null;
   applicantCount?: number;
   status: NeedCardStatus;
   createdAt?: Date | string;
@@ -70,6 +71,7 @@ export function NeedCard({
   formatPreference,
   reward,
   requesterNickname,
+  requesterRating,
   applicantCount = 0,
   status,
 }: NeedCardProps) {
@@ -119,6 +121,9 @@ export function NeedCard({
                 </AvatarFallback>
               </Avatar>
               <span className="line-clamp-1">{requesterNickname}</span>
+              {typeof requesterRating === "number" ? (
+                <span className="text-warning">★ {requesterRating.toFixed(1)}</span>
+              ) : null}
             </div>
             <span className="shrink-0 tabular-nums">
               {applicantCount} 人应征

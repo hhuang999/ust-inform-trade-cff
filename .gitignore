@@ -45,3 +45,6 @@ next-env.d.ts
 
 # local-only credential / account notes (never commit)
 docs/*.local.md
+
+# reference design project (standalone repo, not part of this app)
+/coze/

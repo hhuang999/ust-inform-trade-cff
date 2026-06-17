@@ -5,6 +5,7 @@ import { Prisma, type ExpectedTime } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { withBasePath } from "@/lib/base-path";
+import { aggregateRatings, ratingNumber } from "@/lib/reputation";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { NeedCard } from "@/components/site/need-card";
@@ -118,6 +119,11 @@ export default async function NeedsPage({
       },
     }),
   ]);
+
+  const requesterRatings = await aggregateRatings(
+    needs.map((n) => n.requesterId),
+    "NEED_MATCH",
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentCategory = category ?? "";
@@ -301,6 +307,7 @@ export default async function NeedsPage({
               formatPreference={n.formatPreference}
               reward={n.reward}
               requesterNickname={n.requester.nickname}
+              requesterRating={ratingNumber(requesterRatings, n.requesterId)}
               applicantCount={n._count.matches}
               status={n.status}
               createdAt={n.createdAt}

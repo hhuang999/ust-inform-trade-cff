@@ -24,6 +24,12 @@ export async function submitVerificationAction(_prev: SubmitState, formData: For
     .filter(Boolean);
   if (keys.length === 0) return { error: "请上传至少一张学生证照片" };
 
+  // 归属校验:学生证图片 key 必须落在本人的私有前缀下,防止注入他人私照。
+  const ownPrefix = `private/student-ids/u_${user.id}/`;
+  if (!keys.every((k) => k.startsWith(ownPrefix))) {
+    return { error: "学生证图片校验失败,请重新上传" };
+  }
+
   // 已有 PENDING 则不允许(并发兜底)
   const pending = await prisma.verificationRequest.findFirst({
     where: { userId: user.id, status: "PENDING" },

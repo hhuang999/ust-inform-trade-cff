@@ -14,6 +14,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireVerifiedUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { aggregateRatings, ratingNumber } from "@/lib/reputation";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { ItemCard } from "@/components/site/item-card";
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/empty";
 
 import { OrderActions } from "./order-actions";
+import { SellingItemActions } from "./selling-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -110,7 +112,7 @@ export default async function MyItemsPage({
   const [sellingItems, wantedInterests, deals, dealsReviewed] = await Promise.all([
     // 我发布的:我的物品 + 意向人数 + 当前交易状态。
     prisma.item.findMany({
-      where: { sellerId: viewerId },
+      where: { sellerId: viewerId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { interests: true } },
@@ -152,11 +154,19 @@ export default async function MyItemsPage({
   const reviewedDealIds = new Set(dealsReviewed.map((r) => r.dealId));
 
   // 我想要的:过滤掉已售出/关闭(除非是自己拥有的物品)。
-  const wantedList = wantedInterests.filter(
-    (it) =>
+  const wantedList = wantedInterests.filter((it) => {
+    if (it.item.deletedAt) return false;
+    return (
       it.item.status === "AVAILABLE" ||
       it.item.status === "PENDING" ||
       it.item.seller.id === viewerId
+    );
+  });
+
+  // 我想要列表里各卖家的物品交易评分(信誉标签,§3.7)。
+  const wantedSellerRatings = await aggregateRatings(
+    wantedList.map((it) => it.item.sellerId),
+    "ITEM",
   );
 
   return (
@@ -271,12 +281,15 @@ export default async function MyItemsPage({
                           </Link>
                         </Button>
                       ) : (
-                        <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-                          <Link href={`/items/${item.id}`}>
-                            查看
-                            <ChevronRight />
-                          </Link>
-                        </Button>
+                        <div className="flex flex-col items-end gap-2">
+                          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+                            <Link href={`/items/${item.id}`}>
+                              查看
+                              <ChevronRight />
+                            </Link>
+                          </Button>
+                          <SellingItemActions itemId={item.id} status={item.status} />
+                        </div>
                       )}
                     </div>
                   </CardContent>
@@ -315,7 +328,7 @@ export default async function MyItemsPage({
                 category={it.item.category}
                 condition={it.item.condition}
                 sellerNickname={it.item.seller.nickname}
-                sellerRating={undefined}
+                sellerRating={ratingNumber(wantedSellerRatings, it.item.sellerId)}
                 status={it.item.status}
                 createdAt={it.item.createdAt}
               />

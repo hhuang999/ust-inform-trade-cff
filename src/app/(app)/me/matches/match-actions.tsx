@@ -29,6 +29,7 @@ import {
   confirmNeedMatchComplete,
   decideNeedMatchLiability,
   requestCancelNeedMatch,
+  withdrawNeedMatch,
 } from "@/app/(app)/needs/actions";
 import { ReviewDialog } from "@/components/site/review-dialog";
 
@@ -102,12 +103,30 @@ export function MatchActions({
       );
     }
 
-    // 提供者:等待选择
+    // 提供者:等待选择 + 可撤回应征(PRD §4.7)
+    function handleWithdraw() {
+      startTransition(async () => {
+        const res = await withdrawNeedMatch(matchId);
+        if (res.ok) toast.success("已撤回应征");
+        else toast.error(res.error);
+      });
+    }
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Loader2 className="size-3.5 animate-spin" />
-        等待选择
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin" />
+          等待选择
+        </span>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleWithdraw}
+          disabled={pending}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          撤回
+        </Button>
+      </div>
     );
   }
 
