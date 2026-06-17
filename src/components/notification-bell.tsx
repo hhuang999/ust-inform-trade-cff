@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { withBasePath } from "@/lib/base-path";
 
 type NotificationItem = {
   id: string;
@@ -18,7 +19,7 @@ export function NotificationBell() {
   const [items, setItems] = useState<NotificationItem[]>([]);
 
   useEffect(() => {
-    fetch("/api/notifications")
+    fetch(withBasePath("/api/notifications"))
       .then((r) => r.json())
       .then((d) => {
         setItems(d.items ?? []);
@@ -27,7 +28,7 @@ export function NotificationBell() {
   }, []);
 
   async function markRead(id: string) {
-    await fetch(`/api/notifications/${id}/read`, { method: "PATCH" });
+    await fetch(withBasePath(`/api/notifications/${id}/read`), { method: "PATCH" });
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, read: true } : i)));
     setUnread((u) => (u ? u - 1 : 0));
   }

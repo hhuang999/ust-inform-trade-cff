@@ -3,6 +3,7 @@ import { Sparkles } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { withBasePath } from "@/lib/base-path";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { ServiceCard } from "@/components/site/service-card";
@@ -180,7 +181,7 @@ export default async function ServicesPage({
       {/* ── 搜索 + 形式 ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <form
-          action="/services"
+          action={withBasePath("/services")}
           method="get"
           className="flex w-full max-w-sm items-center gap-2"
         >
@@ -238,7 +239,7 @@ export default async function ServicesPage({
             ))}
           </div>
 
-          <form action="/services" method="get" className="flex items-center gap-2">
+          <form action={withBasePath("/services")} method="get" className="flex items-center gap-2">
             <label htmlFor="sort" className="text-sm text-muted-foreground">
               排序
             </label>

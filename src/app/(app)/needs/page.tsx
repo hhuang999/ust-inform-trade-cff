@@ -4,6 +4,7 @@ import { Prisma, type ExpectedTime } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { withBasePath } from "@/lib/base-path";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { NeedCard } from "@/components/site/need-card";
@@ -193,7 +194,7 @@ export default async function NeedsPage({
 
       {/* ── 搜索 + 期望时间 / 形式偏好 ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <form action="/needs" method="get" className="flex w-full max-w-sm items-center gap-2">
+        <form action={withBasePath("/needs")} method="get" className="flex w-full max-w-sm items-center gap-2">
           <Input
             name="search"
             type="search"
@@ -263,7 +264,7 @@ export default async function NeedsPage({
           {/* 隐式筛选表单:两个 select 挂在此表单上,任意 select 变更时提交。
               注:原生 select 无 onchange,实际提交由下方按钮触发;此处通过隐藏表单
               复用 GET 提交语义,避免客户端 JS。 */}
-          <form id="needs-filter-form" action="/needs" method="get" className="contents">
+          <form id="needs-filter-form" action={withBasePath("/needs")} method="get" className="contents">
             {search ? <input type="hidden" name="search" value={search} /> : null}
             {category ? <input type="hidden" name="category" value={category} /> : null}
             <Button type="submit" variant="outline" size="sm">

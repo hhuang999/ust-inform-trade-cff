@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { X, ShieldCheck, Clock, FileImage } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { withBasePath } from "@/lib/base-path";
 import { reviewAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -214,13 +215,13 @@ export function ReviewCard({ request }: { request: ReviewRequestProps }) {
             {photoKeys.map((k) => (
               <a
                 key={k}
-                href={`/api/admin/student-id?key=${encodeURIComponent(k)}`}
+                href={withBasePath(`/api/admin/student-id?key=${encodeURIComponent(k)}`)}
                 target="_blank"
                 rel="noreferrer"
                 className="group relative block overflow-hidden rounded-lg border border-outline-variant/40 shadow-sm transition-shadow hover:shadow-card"
               >
                 <img
-                  src={`/api/admin/student-id?key=${encodeURIComponent(k)}`}
+                  src={withBasePath(`/api/admin/student-id?key=${encodeURIComponent(k)}`)}
                   alt={`${displayName} 的学生证`}
                   className="aspect-[4/3] w-full rounded-lg border border-outline-variant/40 object-cover"
                   loading="lazy"

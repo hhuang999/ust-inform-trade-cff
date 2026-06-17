@@ -13,6 +13,7 @@ import {
 
 import { submitVerificationAction, type SubmitState } from "./actions";
 import { cn } from "@/lib/utils";
+import { withBasePath } from "@/lib/base-path";
 import { Button } from "@/components/ui/button";
 import { type VerificationStatus } from "@/components/ui/badge";
 import {
@@ -84,7 +85,7 @@ export default function SettingsForm({
     file: File
   ): Promise<{ url: string; key: string } | null> {
     try {
-      const res = await fetch("/api/upload-url", {
+      const res = await fetch(withBasePath("/api/upload-url"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ purpose, contentType: file.type }),

@@ -3,6 +3,7 @@ import { Prisma, type ItemStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { withBasePath } from "@/lib/base-path";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { ItemCard } from "@/components/site/item-card";
@@ -165,7 +166,7 @@ export default async function ItemsPage({
 
       {/* ── 搜索 + 排序(GET 表单,无客户端 JS) ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <form action="/items" method="get" className="flex w-full max-w-sm items-center gap-2">
+        <form action={withBasePath("/items")} method="get" className="flex w-full max-w-sm items-center gap-2">
           <Input
             name="search"
             type="search"
@@ -184,7 +185,7 @@ export default async function ItemsPage({
           </Button>
         </form>
 
-        <form action="/items" method="get" className="flex items-center gap-2">
+        <form action={withBasePath("/items")} method="get" className="flex items-center gap-2">
           <label htmlFor="sort" className="text-sm text-muted-foreground">
             排序
           </label>

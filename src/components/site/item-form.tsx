@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { withBasePath } from "@/lib/base-path";
 import {
   ITEM_CATEGORIES,
   ITEM_CONDITIONS,
@@ -291,7 +292,7 @@ export default function ItemForm({ mode, itemId, initial }: ItemFormProps) {
     file: File
   ): Promise<{ url: string; key: string } | null> {
     try {
-      const res = await fetch("/api/upload-url", {
+      const res = await fetch(withBasePath("/api/upload-url"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ purpose: "item", contentType: file.type }),
