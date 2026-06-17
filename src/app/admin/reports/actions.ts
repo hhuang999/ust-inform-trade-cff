@@ -116,6 +116,21 @@ export async function resolveReport(
     });
   }
 
+  // NONE / WARNING:同样通知被举报者(PRD §7.3 处理后通知举报者与被举报者)。
+  if (ownerId && (action === "NONE" || action === "WARNING")) {
+    const subject = targetTitle ? `「${targetTitle}」` : "你的帖子";
+    await createNotification({
+      userId: ownerId,
+      type: action === "WARNING" ? "report_warning" : "report_cleared",
+      title: action === "WARNING" ? "收到警告" : "举报已处理:未发现违规",
+      body:
+        action === "WARNING"
+          ? `${subject}被举报,经管理员核实给予警告处理。`
+          : `${subject}被举报,经核实未发现违规。`,
+      link: null,
+    });
+  }
+
   revalidatePath("/admin/reports");
   return { ok: true };
 }

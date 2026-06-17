@@ -326,6 +326,10 @@ export async function createBooking(
   });
   if (conflict) return { ok: false, error: "该时段已被预约" };
 
+  // 必填简述需求(服务端校验,防绕过前端)。
+  const note = (input.note ?? "").trim();
+  if (!note) return { ok: false, error: "请填写简述需求" };
+
   const booking = await prisma.booking.create({
     data: {
       serviceId,
@@ -333,7 +337,7 @@ export async function createBooking(
       slotStart: start,
       slotEnd: end,
       clientId: actor.id,
-      note: input.note ?? "",
+      note,
       status: "PENDING",
     },
     select: { id: true },
@@ -446,7 +450,7 @@ export async function requestCancelBooking(bookingId: string): Promise<ActionRes
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
-    select: { serviceId: true, status: true, clientId: true },
+    select: { serviceId: true, status: true, clientId: true, cancelledById: true },
   });
   if (!booking) return { ok: false, error: "预约不存在" };
 
@@ -461,6 +465,13 @@ export async function requestCancelBooking(bookingId: string): Promise<ActionRes
   if (!isClient && !isProvider) return { ok: false, error: "无权操作此预约" };
   if (booking.status === "CANCELLED" || booking.status === "COMPLETED" || booking.status === "REJECTED") {
     return { ok: false, error: "该预约当前不可取消" };
+  }
+  // 已在免责协商中:仅原取消方可重复进入(视为等待),其他方应改用「同意/不同意免责」。
+  if (booking.status === "CANCELLING") {
+    if (booking.cancelledById && booking.cancelledById !== actor.id) {
+      return { ok: false, error: "对方已申请取消,请选择同意或不同意免责" };
+    }
+    return { ok: false, error: "你已申请取消,请等待对方决定" };
   }
 
   const otherId = isClient ? service.providerId : booking.clientId;
@@ -496,6 +507,7 @@ export async function requestCancelBooking(bookingId: string): Promise<ActionRes
     data: {
       status: "CANCELLING",
       cancelledById: actor.id,
+      cancelledAt: new Date(),
     },
   });
   await notify({

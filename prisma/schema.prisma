@@ -142,6 +142,7 @@ model Item {
   status            ItemStatus      @default(AVAILABLE)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
 
   seller    User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   interests ItemInterest[]
@@ -234,6 +235,7 @@ model Service {
   status            ServiceStatus   @default(ACTIVE)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
 
   provider User           @relation(fields: [providerId], references: [id], onDelete: Cascade)
   slots    ServiceSlot[]
@@ -324,6 +326,7 @@ model Need {
   status            NeedStatus      @default(OPEN)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
 
   requester User         @relation(fields: [requesterId], references: [id], onDelete: Cascade)
   matches   NeedMatch[]
@@ -350,6 +353,7 @@ model NeedMatch {
   status             NeedMatchStatus @default(APPLIED)
   firstConfirmerId   String?
   firstConfirmedAt   DateTime?
+  matchedAt          DateTime?
   completedAt        DateTime?
   cancelledById      String?
   cancelledAt        DateTime?

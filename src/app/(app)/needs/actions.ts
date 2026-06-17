@@ -242,23 +242,35 @@ export async function applyToNeed(
     return { ok: false, error: "不能应征自己的需求" };
   }
 
-  // Schema 未对 [needId, providerId] 声明唯一约束,故在应用层做 find-or-create。
-  const match = await prisma.$transaction(async (tx) => {
-    const existing = await tx.needMatch.findFirst({
+  // 必填简述经验/资质与可用时间(服务端校验,防绕过前端)。
+  const msg = (message ?? "").trim();
+  if (!msg) return { ok: false, error: "请简述相关经验/资质与可用时间" };
+
+  // Schema 已对 [needId, providerId] 声明唯一约束;并发重复提交命中 P2002 时回退为既有记录。
+  let match: { id: string };
+  try {
+    const existing = await prisma.needMatch.findFirst({
       where: { needId, providerId: actor.id },
       select: { id: true },
     });
-    if (existing) return existing;
-    return tx.needMatch.create({
-      data: {
-        needId,
-        providerId: actor.id,
-        message: message ?? "",
-        status: "APPLIED",
-      },
-      select: { id: true },
-    });
-  });
+    match = existing
+      ? existing
+      : await prisma.needMatch.create({
+          data: { needId, providerId: actor.id, message: msg, status: "APPLIED" },
+          select: { id: true },
+        });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const existing = await prisma.needMatch.findFirst({
+        where: { needId, providerId: actor.id },
+        select: { id: true },
+      });
+      if (!existing) throw e;
+      match = existing;
+    } else {
+      throw e;
+    }
+  }
 
   await notify({
     userId: need.requesterId,
@@ -428,6 +440,7 @@ export async function requestCancelNeedMatch(matchId: string): Promise<ActionRes
     data: {
       status: "CANCELLING",
       cancelledById: actor.id,
+      cancelledAt: new Date(),
     },
   });
   await notify({
