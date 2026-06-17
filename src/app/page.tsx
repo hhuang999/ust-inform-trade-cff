@@ -27,6 +27,8 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { ItemCard } from "@/components/site/item-card";
+import { ServiceCard } from "@/components/site/service-card";
+import { NeedCard } from "@/components/site/need-card";
 
 export const dynamic = "force-dynamic";
 
@@ -71,19 +73,35 @@ export default async function Home() {
     nickname = me?.nickname ?? null;
   }
 
-  // 首页统计与最新物品:廉价 count / limit 查询,DB 空时安全降级。
-  const [availableItems, verifiedUsers, latestItems] = await Promise.all([
-    prisma.item.count({ where: { status: "AVAILABLE" } }),
-    prisma.user.count({
-      where: { verificationStatus: "VERIFIED", deletedAt: null },
-    }),
-    prisma.item.findMany({
-      where: { status: "AVAILABLE" },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      include: { seller: { select: { nickname: true } } },
-    }),
-  ]);
+  // 首页统计与最新物品/服务/需求:廉价 count / limit 查询,DB 空时安全降级。
+  const [availableItems, verifiedUsers, latestItems, latestServices, latestNeeds] =
+    await Promise.all([
+      prisma.item.count({ where: { status: "AVAILABLE" } }),
+      prisma.user.count({
+        where: { verificationStatus: "VERIFIED", deletedAt: null },
+      }),
+      prisma.item.findMany({
+        where: { status: "AVAILABLE" },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+        include: { seller: { select: { nickname: true } } },
+      }),
+      prisma.service.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+        take: 4,
+        include: { provider: { select: { nickname: true } } },
+      }),
+      prisma.need.findMany({
+        where: { status: "OPEN" },
+        orderBy: { createdAt: "desc" },
+        take: 4,
+        include: {
+          requester: { select: { nickname: true } },
+          matches: { where: { status: "APPLIED" }, select: { id: true } },
+        },
+      }),
+    ]);
 
   const stats = [
     { label: "在售物品", value: availableItems },
@@ -205,27 +223,79 @@ export default async function Home() {
           )}
         </PageContainer>
 
-        {/* ── 服务/需求广场(Phase 4 占位) ── */}
-        <PageContainer className="py-6">
-          <Card
-            className={`flex flex-col items-center gap-3 border-dashed bg-card/60 px-6 py-10 text-center ${ANIM}`}
-          >
-            <span className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="size-5" />
-            </span>
-            <div className="space-y-1">
-              <h3 className="font-serif text-lg font-semibold">
-                服务与需求广场即将上线
-              </h3>
-              <p className="mx-auto max-w-md text-sm text-muted-foreground">
-                咨询服务预约与需求应征撮合正在打磨中，敬请期待。
-              </p>
+        {/* ── 热门服务 ── */}
+        {latestServices.length > 0 ? (
+          <PageContainer className="space-y-5 py-10">
+            <SectionHeading
+              title="热门服务"
+              description="学长学姐的专业咨询与技能教学"
+              action={
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/services">
+                    查看全部
+                    <ArrowRight />
+                  </Link>
+                </Button>
+              }
+            />
+            <div
+              className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 ${ANIM}`}
+            >
+              {latestServices.map((s) => (
+                <ServiceCard
+                  key={s.id}
+                  id={s.id}
+                  title={s.title}
+                  providerNickname={s.provider.nickname}
+                  categories={s.categories}
+                  formats={s.formats}
+                  price={s.price}
+                  durationTier={s.durationTier}
+                  proofFirstImageKey={s.proofImageKeys[0] ?? null}
+                  status={s.status}
+                  createdAt={s.createdAt}
+                />
+              ))}
             </div>
-            <Button variant="outline" disabled>
-              敬请期待
-            </Button>
-          </Card>
-        </PageContainer>
+          </PageContainer>
+        ) : null}
+
+        {/* ── 最新需求 ── */}
+        {latestNeeds.length > 0 ? (
+          <PageContainer className="space-y-5 py-10">
+            <SectionHeading
+              title="最新需求"
+              description="同学们正在寻找的帮助"
+              action={
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/needs">
+                    查看全部
+                    <ArrowRight />
+                  </Link>
+                </Button>
+              }
+            />
+            <div
+              className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 ${ANIM}`}
+            >
+              {latestNeeds.map((n) => (
+                <NeedCard
+                  key={n.id}
+                  id={n.id}
+                  title={n.title}
+                  category={n.category}
+                  expectedTime={n.expectedTime}
+                  formatPreference={n.formatPreference}
+                  reward={n.reward}
+                  requesterNickname={n.requester.nickname}
+                  applicantCount={n.matches.length}
+                  status={n.status}
+                  createdAt={n.createdAt}
+                />
+              ))}
+            </div>
+          </PageContainer>
+        ) : null}
 
         {/* ── Feature cards ── */}
         <PageContainer className="py-10">
