@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
-import { signOut } from "next-auth/react";
 import { LogOut, Settings, ShieldCheck, User } from "lucide-react";
+
+import { logoutAction } from "@/app/(auth)/actions";
 
 import {
   Avatar,
@@ -82,7 +83,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
           onSelect={(e) => {
             e.preventDefault();
             startTransition(() => {
-              void signOut({ callbackUrl: "/" });
+              void logoutAction();
             });
           }}
         >
