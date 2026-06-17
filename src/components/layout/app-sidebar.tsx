@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bell,
-  LayoutDashboard,
+  Handshake,
   Package,
   Settings,
   ShieldCheck,
@@ -36,8 +36,11 @@ function browseItems(): NavItem[] {
 function mineItems(userId: string): NavItem[] {
   return [
     { label: "我的主页", href: `/profile/${userId}`, icon: User },
-    { label: "我的发布", href: "/me/items", icon: LayoutDashboard },
-    { label: "订单中心", href: "/me/bookings", icon: ShoppingCart },
+    { label: "我的物品", href: "/me/items", icon: Package },
+    { label: "我的服务", href: "/me/services", icon: Wrench },
+    { label: "我的需求", href: "/me/needs", icon: HandHeart },
+    { label: "服务预约", href: "/me/bookings", icon: ShoppingCart },
+    { label: "需求撮合", href: "/me/matches", icon: Handshake },
     { label: "通知", href: "/notifications", icon: Bell },
     { label: "设置", href: "/settings", icon: Settings },
   ];

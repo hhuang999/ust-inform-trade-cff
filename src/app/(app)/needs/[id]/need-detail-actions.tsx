@@ -11,6 +11,7 @@ import {
   Loader2,
   MessageCircle,
   Pause,
+  Pencil,
   Play,
   ShieldCheck,
   Users,
@@ -347,6 +348,14 @@ function RequesterLifecycle({
   return (
     <Card>
       <CardContent className="flex flex-col gap-2">
+        {(status === "OPEN" || status === "PAUSED") ? (
+          <Button asChild className="w-full">
+            <Link href={`/needs/${needId}/edit`}>
+              <Pencil />
+              编辑需求
+            </Link>
+          </Button>
+        ) : null}
         {status === "OPEN" ? (
           <Button
             variant="outline"
@@ -385,6 +394,11 @@ function RequesterLifecycle({
             {pending ? <Loader2 className="animate-spin" /> : <XCircle />}
             关闭需求
           </Button>
+        ) : null}
+        {status === "CLOSED" ? (
+          <p className="rounded-md bg-accent/60 px-3 py-2 text-sm text-muted-foreground">
+            该需求已关闭,不再接受应征;已完成的对接记录仍可在上方查看。
+          </p>
         ) : null}
       </CardContent>
     </Card>

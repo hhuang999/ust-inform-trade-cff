@@ -12,6 +12,7 @@ import {
   Loader2,
   MessageCircle,
   Pause,
+  Pencil,
   Play,
   Plus,
   ShieldCheck,
@@ -553,6 +554,14 @@ function ProviderLifecycle({
   return (
     <Card>
       <CardContent className="flex flex-col gap-2">
+        {(status === "ACTIVE" || status === "PAUSED") ? (
+          <Button asChild className="w-full">
+            <Link href={`/services/${serviceId}/edit`}>
+              <Pencil />
+              编辑服务
+            </Link>
+          </Button>
+        ) : null}
         {status === "ACTIVE" ? (
           <Button
             variant="outline"
