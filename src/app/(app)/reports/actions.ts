@@ -44,6 +44,27 @@ async function resolveActor(): Promise<SessionUser | { error: string }> {
   }
 }
 
+/** 举报目标是否真实存在(按类型查表;排除已软删除)。防伪造 / 悬挂 targetId / IDOR。 */
+async function targetExistsForType(
+  targetType: ReportTargetType,
+  targetId: string
+): Promise<boolean> {
+  if (targetType === "ITEM") {
+    const r = await prisma.item.findUnique({ where: { id: targetId }, select: { id: true, deletedAt: true } });
+    return !!r && !r.deletedAt;
+  }
+  if (targetType === "SERVICE") {
+    const r = await prisma.service.findUnique({ where: { id: targetId }, select: { id: true, deletedAt: true } });
+    return !!r && !r.deletedAt;
+  }
+  if (targetType === "NEED") {
+    const r = await prisma.need.findUnique({ where: { id: targetId }, select: { id: true, deletedAt: true } });
+    return !!r && !r.deletedAt;
+  }
+  const r = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true, deletedAt: true } });
+  return !!r && !r.deletedAt;
+}
+
 export interface CreateReportInput {
   targetType: ReportTargetType;
   targetId: string;
@@ -94,6 +115,22 @@ export async function createReport(
   if (targetType === "USER" && targetId === actor.id) {
     return { ok: false, error: "不能举报自己" };
   }
+
+  // 举报目标必须真实存在(防伪造 / 悬挂 targetId)。
+  const exists = await targetExistsForType(targetType as ReportTargetType, targetId);
+  if (!exists) return { ok: false, error: "举报目标不存在" };
+
+  // 去重:同一用户对同一目标的 PENDING 举报只保留一条(处理后可再次举报)。
+  const dup = await prisma.report.findFirst({
+    where: {
+      reporterId: actor.id,
+      targetType: targetType as ReportTargetType,
+      targetId,
+      status: "PENDING",
+    },
+    select: { id: true },
+  });
+  if (dup) return { ok: false, error: "你已举报过该内容,请等待处理" };
 
   const report = await prisma.report.create({
     data: {

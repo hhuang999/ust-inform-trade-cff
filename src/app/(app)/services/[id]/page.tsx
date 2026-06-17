@@ -173,8 +173,10 @@ export default async function ServiceDetailPage({
       )
       .map((b) => b.slotId!)
   );
+  // 客户仅看到「未来且未被占用」的时段;提供者保留全部时段作预览。
+  const now = new Date();
   const availableSlots: SlotSummary[] = allSlots.filter(
-    (s) => !occupiedSlotIds.has(s.id)
+    (s) => !occupiedSlotIds.has(s.id) && (isProvider || new Date(s.startAt) > now)
   );
 
   // 当前用户是否已收藏(用于标题栏心形)。

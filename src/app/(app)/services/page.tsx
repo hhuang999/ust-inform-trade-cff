@@ -33,7 +33,6 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 12;
 const SORT_OPTIONS = [
   { value: "latest", label: "最新发布" },
-  { value: "rating", label: "评分优先" },
 ] as const;
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
@@ -92,7 +91,7 @@ export default async function ServicesPage({
       : {}),
   };
 
-  // sort:latest 与 rating 均以 createdAt desc 为准(rating 排序暂用占位)。
+  // 排序:最新发布(按 createdAt desc)。
   const orderBy = [{ createdAt: "desc" as const }];
 
   const [total, services] = await Promise.all([
@@ -320,10 +319,10 @@ export default async function ServicesPage({
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                href={buildHref({
+                href={withBasePath(buildHref({
                   ...baseParams,
                   page: page > 1 ? String(page - 1) : undefined,
-                })}
+                }))}
                 aria-disabled={page <= 1}
                 className={page <= 1 ? "pointer-events-none opacity-50" : ""}
               />
@@ -331,10 +330,10 @@ export default async function ServicesPage({
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
               <PaginationItem key={p}>
                 <PaginationLink
-                  href={buildHref({
+                  href={withBasePath(buildHref({
                     ...baseParams,
                     page: p > 1 ? String(p) : undefined,
-                  })}
+                  }))}
                   isActive={p === page}
                 >
                   {p}
@@ -343,10 +342,10 @@ export default async function ServicesPage({
             ))}
             <PaginationItem>
               <PaginationNext
-                href={buildHref({
+                href={withBasePath(buildHref({
                   ...baseParams,
                   page: page < totalPages ? String(page + 1) : undefined,
-                })}
+                }))}
                 aria-disabled={page >= totalPages}
                 className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
               />

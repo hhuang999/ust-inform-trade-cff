@@ -234,6 +234,15 @@ export async function addServiceSlot(
     return { ok: false, error: "已关闭的服务不可修改时段" };
   }
 
+  // 时段重叠检查:与现有时段时间区间相交则拒绝(防重复/嵌套时段)。
+  const newStart = new Date(parsed.data.startAt);
+  const newEnd = new Date(parsed.data.endAt);
+  const overlap = await prisma.serviceSlot.findFirst({
+    where: { serviceId, startAt: { lt: newEnd }, endAt: { gt: newStart } },
+    select: { id: true },
+  });
+  if (overlap) return { ok: false, error: "时段与现有时段重叠" };
+
   try {
     await prisma.serviceSlot.create({
       data: {
@@ -298,6 +307,8 @@ export async function createBooking(
     return { ok: false, error: "时间格式不正确" };
   }
   if (endMs <= startMs) return { ok: false, error: "结束时间须晚于开始时间" };
+  // 不可预约过去的时间。
+  if (startMs <= Date.now()) return { ok: false, error: "不能预约过去的时间" };
 
   const service = await prisma.service.findUnique({
     where: { id: serviceId },
@@ -309,23 +320,17 @@ export async function createBooking(
     return { ok: false, error: "不能预约自己的服务" };
   }
 
-  // 占用检查:同一时段或时间窗口重叠的进行中预约不可重复占用。
+  // 占用检查:同一 slot 的进行中预约,或时间窗口重叠的进行中预约,均视为冲突。
   const start = new Date(startMs);
   const end = new Date(endMs);
   const overlapWhere: Prisma.BookingWhereInput = {
     serviceId,
     status: { in: ["PENDING", "CONFIRMED", "CANCELLING"] },
+    OR: [
+      ...(input.slotId ? [{ slotId: input.slotId }] : []),
+      { slotStart: { lt: end }, slotEnd: { gt: start } },
+    ],
   };
-  if (input.slotId) {
-    overlapWhere.slotId = input.slotId;
-  } else {
-    overlapWhere.OR = [
-      {
-        slotStart: { lt: end },
-        slotEnd: { gt: start },
-      },
-    ];
-  }
   const conflict = await prisma.booking.findFirst({
     where: overlapWhere,
     select: { id: true },

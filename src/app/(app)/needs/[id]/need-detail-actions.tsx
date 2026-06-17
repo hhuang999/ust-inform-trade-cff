@@ -88,6 +88,7 @@ export interface NeedDetailActionsProps {
   applicants: ApplicantSummary[];
   matches: MatchedSummary[];
   viewerApplied: boolean;
+  viewerNotSelected: boolean;
 }
 
 const MATCH_STATUS_LABEL: Record<MatchedSummary["status"], string> = {
@@ -444,12 +445,14 @@ function ProviderActions({
   contact,
   status,
   viewerApplied,
+  viewerNotSelected,
   matches,
 }: {
   needId: string;
   contact: string | null;
   status: "OPEN" | "PAUSED" | "CLOSED";
   viewerApplied: boolean;
+  viewerNotSelected: boolean;
   matches: MatchedSummary[];
 }) {
   const [pending, startTransition] = useTransition();
@@ -512,6 +515,11 @@ function ProviderActions({
           {!canApply && status !== "OPEN" ? (
             <p className="mt-2 text-center text-xs text-muted-foreground">
               该需求当前状态为{status === "PAUSED" ? "已暂停" : "已关闭"}。
+            </p>
+          ) : null}
+          {viewerNotSelected && canApply ? (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              你本次未被选中,可重新应征。
             </p>
           ) : null}
         </div>
@@ -606,6 +614,7 @@ export function NeedDetailActions({
   applicants,
   matches,
   viewerApplied,
+  viewerNotSelected,
 }: NeedDetailActionsProps) {
   if (isRequester) {
     return (
@@ -625,6 +634,7 @@ export function NeedDetailActions({
         contact={contact}
         status={status}
         viewerApplied={viewerApplied}
+        viewerNotSelected={viewerNotSelected}
         matches={matches}
       />
     );

@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Bell, GraduationCap, ShieldCheck, ShoppingBag } from "lucide-react";
 import type { Notification } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { requireVerifiedUser } from "@/lib/permissions";
+import { requireVerifiedUser, type SessionUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
@@ -78,7 +79,12 @@ export default async function NotificationsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await auth();
-  const me = requireVerifiedUser(session?.user ?? null);
+  let me: SessionUser;
+  try {
+    me = requireVerifiedUser(session?.user ?? null);
+  } catch {
+    redirect("/login?callbackUrl=/notifications");
+  }
 
   const sp = await searchParams;
   const typeRaw = typeof sp.type === "string" ? sp.type : "all";

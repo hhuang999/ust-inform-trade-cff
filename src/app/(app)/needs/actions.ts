@@ -246,40 +246,78 @@ export async function applyToNeed(
   const msg = (message ?? "").trim();
   if (!msg) return { ok: false, error: "请简述相关经验/资质与可用时间" };
 
-  // Schema 已对 [needId, providerId] 声明唯一约束;并发重复提交命中 P2002 时回退为既有记录。
+  // 应征去重 + 重新激活:[needId, providerId] 唯一。
+  // - 已有「进行中」应征(APPLIED/MATCHED/CANCELLING)→ 幂等返回,不重复通知。
+  // - 仅有「已结束」记录(NOT_SELECTED/CANCELLED)→ 重新激活为 APPLIED 并通知(修复"落选后无法再应征"的静默空操作)。
+  // - 无记录 → 新建并通知。
   let match: { id: string };
-  try {
-    const existing = await prisma.needMatch.findFirst({
-      where: { needId, providerId: actor.id },
+  let isNew = false;
+
+  const active = await prisma.needMatch.findFirst({
+    where: {
+      needId,
+      providerId: actor.id,
+      status: { in: ["APPLIED", "MATCHED", "CANCELLING"] },
+    },
+    select: { id: true },
+  });
+  if (active) {
+    match = active;
+  } else {
+    const inactive = await prisma.needMatch.findFirst({
+      where: { needId, providerId: actor.id, status: { in: ["NOT_SELECTED", "CANCELLED"] } },
       select: { id: true },
     });
-    match = existing
-      ? existing
-      : await prisma.needMatch.create({
+    try {
+      if (inactive) {
+        await prisma.needMatch.update({
+          where: { id: inactive.id },
+          data: {
+            status: "APPLIED",
+            message: msg,
+            firstConfirmerId: null,
+            firstConfirmedAt: null,
+            matchedAt: null,
+            completedAt: null,
+            cancelledById: null,
+            cancelledAt: null,
+            liabilityAgreed: null,
+            liabilityDecidedAt: null,
+          },
+        });
+        match = inactive;
+      } else {
+        match = await prisma.needMatch.create({
           data: { needId, providerId: actor.id, message: msg, status: "APPLIED" },
           select: { id: true },
         });
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      const existing = await prisma.needMatch.findFirst({
-        where: { needId, providerId: actor.id },
-        select: { id: true },
-      });
-      if (!existing) throw e;
-      match = existing;
-    } else {
-      throw e;
+      }
+      isNew = true;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        // 并发:另一请求刚建了同一记录,取回它。
+        const existing = await prisma.needMatch.findFirst({
+          where: { needId, providerId: actor.id },
+          select: { id: true },
+        });
+        if (!existing) throw e;
+        match = existing;
+      } else {
+        throw e;
+      }
     }
   }
 
-  await notify({
-    userId: need.requesterId,
-    type: "need_new_application",
-    title: "你的需求有新应征",
-    body: `「${need.title}」收到一条新的应征申请`,
-    link: `/needs/${needId}`,
-    data: { matchId: match.id, needId },
-  });
+  if (isNew) {
+    await notify({
+      userId: need.requesterId,
+      type: "need_new_application",
+      title: "你的需求有新应征",
+      body: `「${need.title}」收到一条新的应征申请`,
+      link: `/needs/${needId}`,
+      data: { matchId: match.id, needId },
+    });
+  }
 
   revalidateNeedRoutes(needId);
   revalidatePath("/me/matches");

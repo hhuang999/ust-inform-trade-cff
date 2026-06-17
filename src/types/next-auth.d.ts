@@ -13,6 +13,7 @@ declare module "next-auth" {
     id: string;
     role?: Role;
     verificationStatus?: VerificationStatus;
+    disabled?: boolean;
   }
 }
 
@@ -21,5 +22,8 @@ declare module "@auth/core/jwt" {
     id?: string;
     role?: Role;
     verificationStatus?: VerificationStatus;
+    disabled?: boolean;
+    /** 上次从 DB 重新拉取角色/认证/封禁态的时间戳(节流用)。 */
+    refreshedAt?: number;
   }
 }
