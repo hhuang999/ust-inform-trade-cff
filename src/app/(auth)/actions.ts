@@ -10,8 +10,9 @@ import { signOut } from "@/lib/auth";
  * /api/auth/signout(真实路径是 /apps/<app>/api/auth/signout),请求落空 →
  * session cookie 不会被清除 → 用户"登出"后下次进来仍是登录态。
  *
- * 服务端 signOut 会正确清除 cookie(path 对齐)并重定向到登录页。
+ * 服务端 signOut 会正确清除 cookie(path 对齐)并重定向。
+ * 登出后回到首页(与登录后一致)。
  */
 export async function logoutAction(): Promise<void> {
-  await signOut({ redirectTo: "/login" });
+  await signOut({ redirectTo: "/" });
 }
