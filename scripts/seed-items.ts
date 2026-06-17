@@ -158,6 +158,8 @@ async function main() {
     if (existing) {
       await prisma.item.update({
         where: { id: existing.id },
+        // 更新时不写 imageKeys:保留既有图片(例如 seed-item-images 已配的真实照片),
+        // 避免重跑种子把图片清空。新建物品仍以 imageKeys:[] 起步,由配图脚本补充。
         data: {
           description: it.description,
           category: it.category,
@@ -165,7 +167,6 @@ async function main() {
           priceMode: it.priceMode,
           price: it.price,
           originalPrice: it.originalPrice,
-          imageKeys: [],
           tags: [],
           tradeMethods: it.tradeMethods,
           pickupLocation: it.tradeMethods.includes("自提") ? "校内约定地点" : null,
