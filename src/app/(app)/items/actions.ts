@@ -321,34 +321,53 @@ export async function chooseBuyer(
   }
 
   const deal = await prisma.$transaction(async (tx) => {
-    // 取消既有 PENDING 交易(若有),并通知旧买家。
+    // ItemDeal.itemId 是 @unique(1:1)。复用唯一行:存在则原地重置为新买家 + PENDING,
+    // 否则新建。避免「再次选定 / 取消后重新选定」时 create 撞唯一约束(P2002)。
     const prev = await tx.itemDeal.findUnique({
       where: { itemId },
       select: { id: true, buyerId: true, status: true },
     });
-    if (prev && prev.status === "PENDING" && prev.buyerId !== buyerUserId) {
+
+    let dealId: string;
+    let prevBuyerId: string | null = null;
+
+    if (prev) {
+      // 换买家且旧交易仍在进行中 → 记下旧买家用于通知。
+      if (prev.status === "PENDING" && prev.buyerId !== buyerUserId) {
+        prevBuyerId = prev.buyerId;
+      }
       await tx.itemDeal.update({
         where: { id: prev.id },
-        data: { status: "CANCELLED", cancelledById: actor.id, cancelledAt: new Date() },
+        data: {
+          buyerId: buyerUserId,
+          status: "PENDING",
+          firstConfirmerId: null,
+          firstConfirmedAt: null,
+          completedAt: null,
+          cancelledById: null,
+          cancelledAt: null,
+        },
       });
+      dealId = prev.id;
+    } else {
+      const created = await tx.itemDeal.create({
+        data: {
+          itemId,
+          sellerId: actor.id,
+          buyerId: buyerUserId,
+          status: "PENDING",
+        },
+        select: { id: true },
+      });
+      dealId = created.id;
     }
-
-    const created = await tx.itemDeal.create({
-      data: {
-        itemId,
-        sellerId: actor.id,
-        buyerId: buyerUserId,
-        status: "PENDING",
-      },
-      select: { id: true },
-    });
 
     await tx.item.update({
       where: { id: itemId },
       data: { status: "PENDING" },
     });
 
-    return { dealId: created.id, prevBuyerId: prev?.status === "PENDING" ? prev.buyerId : null };
+    return { dealId, prevBuyerId };
   });
 
   // 通知旧买家(若被换下)。

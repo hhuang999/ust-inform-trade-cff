@@ -63,7 +63,8 @@ export default async function EditItemPage({
 
   if (!item) notFound();
   if (item.sellerId !== user!.id) notFound();
-  if (item.status !== "AVAILABLE" && item.status !== "PENDING") notFound();
+  // 仅在售(AVAILABLE)可编辑,与 updateItem 的状态校验一致(PRD §3.2);避免 PENDING 编辑后保存被拒的死路。
+  if (item.status !== "AVAILABLE") notFound();
 
   const initial: ItemFormInitial = {
     title: item.title,

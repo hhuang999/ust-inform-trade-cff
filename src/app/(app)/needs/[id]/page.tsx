@@ -131,6 +131,11 @@ export default async function NeedDetailPage({
         m.status === "CANCELLING")
   );
 
+  // 当前用户是否曾应征但未被选中(可重新应征,给明确反馈)。
+  const viewerNotSelected = need.matches.some(
+    (m) => m.provider.id === viewerId && m.status === "NOT_SELECTED"
+  );
+
   // 当前用户是否已收藏(用于标题栏心形)。
   let isNeedFavorited = false;
   if (viewerId) {
@@ -283,6 +288,7 @@ export default async function NeedDetailPage({
             applicants={applicantSummaryList}
             matches={matchedSummaryList}
             viewerApplied={viewerApplied}
+            viewerNotSelected={viewerNotSelected}
           />
 
           {/* 安全提示 */}

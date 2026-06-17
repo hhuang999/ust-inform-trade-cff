@@ -13,11 +13,19 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   });
   if (!parsed.success) return { error: "请输入账号和密码" };
 
+  // 登录后回到来源页(若有);仅允许同源相对路径,防开放重定向。
+  const rawCb = formData.get("callbackUrl");
+  const callbackUrl =
+    typeof rawCb === "string" && rawCb.startsWith("/") && !rawCb.startsWith("//")
+      ? rawCb
+      : "/";
+
   try {
     await signIn("credentials", {
       identifier: parsed.data.identifier,
       password: parsed.data.password,
-      redirectTo: "/",
+      // 登录后回到来源页 callbackUrl(已在上方做同源校验防开放重定向)。
+      redirectTo: callbackUrl,
     });
   } catch (e) {
     if (e instanceof AuthError) {

@@ -66,7 +66,8 @@ export async function resolveReport(
       }),
       prisma.user.update({
         where: { id: ownerId },
-        data: { violationCount: { increment: 1 } },
+        // 封禁:置 disabled,登录被拒、在线会话在数分钟内(JWT 节流刷新)失效。
+        data: { violationCount: { increment: 1 }, disabled: true },
       }),
     ]);
   }

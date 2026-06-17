@@ -89,8 +89,9 @@ export async function GET(req: Request) {
         status: "CONFIRMED",
         OR: [
           { firstConfirmedAt: { not: null, lt: sevenDaysAgo } },
-          // 双方均未确认完成,确认预约 7 天后自动完成。
-          { firstConfirmedAt: null, updatedAt: { lt: sevenDaysAgo } },
+          // 双方均未确认完成,创建 7 天后自动完成。
+          // 用 createdAt(不可变)而非 updatedAt(任何写都会重置计时,导致永不触发)。
+          { firstConfirmedAt: null, createdAt: { lt: sevenDaysAgo } },
         ],
       },
       select: { id: true, clientId: true, serviceId: true },

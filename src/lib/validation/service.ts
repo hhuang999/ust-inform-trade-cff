@@ -85,5 +85,9 @@ export const slotCreateSchema = z
   .refine((d) => new Date(d.endAt).getTime() > new Date(d.startAt).getTime(), {
     message: "结束时间须晚于开始时间",
     path: ["endAt"],
+  })
+  .refine((d) => new Date(d.startAt).getTime() > Date.now(), {
+    message: "开始时间须晚于当前时间",
+    path: ["startAt"],
   });
 export type SlotCreateInput = z.infer<typeof slotCreateSchema>;
