@@ -1,23 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lora } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const serif = Lora({
-  variable: "--font-serif-google",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
+// 沙箱/离线环境无法访问 Google Fonts(fonts.gstatic.com 被屏蔽,构建期会失败),
+// 因此不使用 next/font/google。字体改由 globals.css 的 :root 以系统字体栈定义
+// (--font-geist-sans / --font-geist-mono / --font-serif-google),零远程字体、零字体文件。
 
 export const metadata: Metadata = {
   title: {
@@ -34,10 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="zh-CN"
-      className={`${geistSans.variable} ${geistMono.variable} ${serif.variable} h-full antialiased`}
-    >
+    <html lang="zh-CN" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
         <Toaster position="top-center" richColors closeButton />

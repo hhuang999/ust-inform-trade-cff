@@ -74,6 +74,18 @@
   --radius: 0.75rem;
 
   --shadow-color: 32 35% 62%;
+
+  /*
+   * 字体(系统字体栈 —— 沙箱/离线环境无法访问 Google Fonts)。
+   * 变量名沿用 next/font/google 的约定,使下方 @theme inline 的 --font-sans/serif/mono
+   * 无需改动即可解析。Lora 衬线由系统衬线栈(Georgia 等)替代,保留衬线标题的"纸感"。
+   */
+  --font-geist-sans: system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --font-serif-google: Georgia, Cambria, "Times New Roman", "Source Han Serif SC",
+    "Noto Serif CJK SC", "Songti SC", STSong, serif;
 }
 
 @theme inline {
