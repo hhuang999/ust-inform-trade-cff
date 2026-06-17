@@ -6,7 +6,6 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import {
   CheckCircle2,
-  Heart,
   Loader2,
   MessageCircle,
   Pencil,
@@ -35,6 +34,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/input";
 import type { VerificationStatus } from "@/components/ui/badge";
 
 import {
@@ -43,7 +52,6 @@ import {
   closeItem,
   confirmItemComplete,
   expressInterest,
-  toggleFavorite,
 } from "@/app/(app)/items/actions";
 
 /** 意向点击时间格式化为 MM-DD。 */
@@ -55,43 +63,37 @@ function formatInterestTime(iso: string): string {
 }
 
 /**
- * 买家侧动作卡(已认证、非卖家)。
- * - 我想要(expressInterest)、收藏(toggleFavorite)、联系方式展示。
+ * 买家侧动作卡(已登录、非卖家)。
+ * - 我想要(expressInterest,可附留言):加入卖家意向队列。
+ * - 队列状态:自己的排位 / 是否被选为备选(卖家已选定他人)。
+ * - 联系方式展示。
  */
 function BuyerActions({
   itemId,
   contact,
-  isFavorited,
   hasInterest,
+  viewerInterestRank,
+  chosenOtherBuyer,
 }: {
   itemId: string;
   contact: string | null;
-  isFavorited: boolean;
   hasInterest: boolean;
+  viewerInterestRank: number | null;
+  chosenOtherBuyer: boolean;
 }) {
   const [pending, startTransition] = useTransition();
-  const [favorited, setFavorited] = React.useState(isFavorited);
   const [interested, setInterested] = React.useState(hasInterest);
+  const [open, setOpen] = React.useState(false);
+  const [message, setMessage] = React.useState("");
 
-  function handleInterest() {
-    if (interested) return;
+  function handleSubmit() {
     startTransition(async () => {
-      const res = await expressInterest(itemId);
+      const res = await expressInterest(itemId, message.trim() || undefined);
       if (res.ok) {
         setInterested(true);
+        setOpen(false);
+        setMessage("");
         toast.success("已加入意向列表");
-      } else {
-        toast.error(res.error);
-      }
-    });
-  }
-
-  function handleFavorite() {
-    startTransition(async () => {
-      const res = await toggleFavorite(itemId);
-      if (res.ok) {
-        setFavorited(res.favorited);
-        toast.success(res.favorited ? "已收藏" : "已取消收藏");
       } else {
         toast.error(res.error);
       }
@@ -102,34 +104,34 @@ function BuyerActions({
     <Card>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-2">
-          <Button
-            onClick={handleInterest}
-            disabled={pending || interested}
-            className="w-full active:scale-[0.98]"
-          >
-            {pending && !interested ? (
-              <Loader2 className="animate-spin" />
-            ) : interested ? (
+          {interested ? (
+            <Button disabled className="w-full">
               <CheckCircle2 />
-            ) : (
-              <ShoppingBag />
-            )}
-            {interested ? "已意向" : "我想要"}
-          </Button>
+              已意向
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setOpen(true)}
+              disabled={pending}
+              className="w-full active:scale-[0.98]"
+            >
+              {pending ? <Loader2 className="animate-spin" /> : <ShoppingBag />}
+              我想要
+            </Button>
+          )}
 
-          <Button
-            variant="outline"
-            onClick={handleFavorite}
-            disabled={pending}
-            className="w-full active:scale-[0.98]"
-          >
-            {pending && interested ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Heart className={cn(favorited && "fill-destructive text-destructive")} />
-            )}
-            {favorited ? "已收藏" : "收藏"}
-          </Button>
+          {/* 队列状态 / 操作说明 */}
+          {interested ? (
+            <p className="rounded-md bg-accent/60 px-3 py-2 text-xs text-muted-foreground">
+              {chosenOtherBuyer
+                ? `你是第 ${viewerInterestRank ?? "-"} 位意向人。卖家已选定其他买家,你为备选;若对方取消交易将通知你。`
+                : `你是第 ${viewerInterestRank ?? "-"} 位意向人,等待卖家选择。`}
+            </p>
+          ) : (
+            <p className="px-1 text-xs text-muted-foreground">
+              点击后加入意向队列,卖家会在意向列表中看到你(可附留言)。
+            </p>
+          )}
         </div>
 
         <Separator />
@@ -147,19 +149,50 @@ function BuyerActions({
           ) : (
             <div className="flex items-start gap-2.5 rounded-lg bg-accent px-3.5 py-2.5 text-sm text-muted-foreground ring-1 ring-inset ring-outline-variant/40">
               <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-              <span>联系方式仅认证用户可见</span>
+              <span>卖家暂未提供联系方式</span>
             </div>
           )}
         </div>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>我想要这件物品</DialogTitle>
+              <DialogDescription>
+                加入意向队列,卖家会在意向列表中看到你。可附留言说明你的意向。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-foreground">
+                给卖家留言(可选)
+              </label>
+              <Textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="例如:想约周三自提 / 价格能否小刀 / 我很有诚意…"
+                rows={3}
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">取消</Button>
+              </DialogClose>
+              <Button onClick={handleSubmit} disabled={pending}>
+                {pending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
+                确认意向
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
 }
 
 /**
- * 未登录 / 未认证 时的提示卡。
+ * 未登录时的提示卡(登录即可使用全部功能,认证仅为信任徽章)。
  */
-function GuestActions({ hasSession }: { hasSession: boolean }) {
+function GuestActions() {
   return (
     <Card>
       <CardContent className="space-y-4">
@@ -172,26 +205,18 @@ function GuestActions({ hasSession }: { hasSession: boolean }) {
               </Button>
             </span>
           </TooltipTrigger>
-          <TooltipContent>
-            {hasSession ? "完成认证后即可表达意向" : "登录后即可表达意向"}
-          </TooltipContent>
+          <TooltipContent>登录后即可表达意向</TooltipContent>
         </Tooltip>
 
         <Separator />
 
         <div className="flex items-start gap-2.5 rounded-lg bg-accent px-3.5 py-2.5 text-sm text-muted-foreground ring-1 ring-inset ring-outline-variant/40">
           <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-          <span>
-            {hasSession
-              ? "完成认证后可查看联系方式并与卖家沟通"
-              : "登录并完成认证后查看联系方式"}
-          </span>
+          <span>登录后即可查看联系方式并与卖家沟通</span>
         </div>
 
         <Button asChild variant="outline" className="w-full">
-          <Link href={hasSession ? "/settings" : "/login"}>
-            {hasSession ? "去认证" : "去登录"}
-          </Link>
+          <Link href="/login">去登录</Link>
         </Button>
       </CardContent>
     </Card>
@@ -332,7 +357,7 @@ function SellerInterests({
           </p>
         ) : (
           <ul className="space-y-2">
-            {interests.map((it) => {
+            {interests.map((it, idx) => {
               const isCurrentBuyer = currentDeal?.buyerId === it.userId;
               return (
                 <li
@@ -352,6 +377,9 @@ function SellerInterests({
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className="font-normal text-muted-foreground">
+                        第 {idx + 1} 位
+                      </Badge>
                       <span className="truncate text-sm font-medium">
                         {it.nickname}
                       </span>
@@ -366,6 +394,11 @@ function SellerInterests({
                       {it.department} · {it.enrollmentYear} 级 · 点击于{" "}
                       {formatInterestTime(it.createdAt)}
                     </p>
+                    {it.message ? (
+                      <p className="mt-1 rounded-md bg-accent/60 px-2 py-1 text-xs text-foreground/80">
+                        {it.message}
+                      </p>
+                    ) : null}
                   </div>
                   {isCurrentBuyer ? (
                     <Badge variant="success" className="font-normal">
@@ -442,6 +475,7 @@ export interface InterestSummary {
   verificationStatus: VerificationStatus;
   avatarUrl: string | null;
   rating?: number | null;
+  message: string | null;
   createdAt: string;
 }
 
@@ -459,7 +493,6 @@ export interface ItemDetailActionsProps {
   /** null = 未登录; true = 已认证; false = 已登录未认证 */
   viewerVerified: boolean | null;
   viewerId: string | null;
-  isFavorited: boolean;
   hasInterest: boolean;
   contact: string | null;
   interests: InterestSummary[];
@@ -475,7 +508,6 @@ export function ItemDetailActions({
   isSeller,
   viewerVerified,
   viewerId,
-  isFavorited,
   hasInterest,
   contact,
   interests,
@@ -497,11 +529,20 @@ export function ItemDetailActions({
     );
   }
 
-  // 非卖家:已认证 → 买家动作;否则游客提示。
-  if (viewerVerified === true) {
+  // 非卖家:已登录(含未认证) → 买家动作;未登录 → 游客提示。
+  if (viewerVerified !== null) {
     // 当前买家正是这笔进行中/已完成交易的对象 → 显示确认完成卡。
     const isBuyerInDeal =
       !!currentDeal && !!viewerId && currentDeal.buyerId === viewerId;
+    // 当前用户在意向队列中的排位(按意向时间升序)。
+    const viewerInterestRank = viewerId
+      ? (() => {
+          const idx = interests.findIndex((it) => it.userId === viewerId);
+          return idx >= 0 ? idx + 1 : null;
+        })()
+      : null;
+    // 卖家是否已选定其他买家(当前用户为备选)。
+    const chosenOtherBuyer = !!currentDeal && currentDeal.buyerId !== viewerId;
     return (
       <div className="space-y-4">
         {isBuyerInDeal ? (
@@ -514,10 +555,16 @@ export function ItemDetailActions({
             viewerId={viewerId!}
           />
         ) : null}
-        <BuyerActions itemId={itemId} contact={contact} isFavorited={isFavorited} hasInterest={hasInterest} />
+        <BuyerActions
+          itemId={itemId}
+          contact={contact}
+          hasInterest={hasInterest}
+          viewerInterestRank={viewerInterestRank}
+          chosenOtherBuyer={chosenOtherBuyer}
+        />
       </div>
     );
   }
 
-  return <GuestActions hasSession={viewerVerified !== null} />;
+  return <GuestActions />;
 }

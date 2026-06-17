@@ -147,7 +147,6 @@ model Item {
   seller    User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   interests ItemInterest[]
   deal      ItemDeal?
-  favorites Favorite[]
 
   @@index([status, createdAt])
   @@index([sellerId])
@@ -198,17 +197,25 @@ enum ItemDealStatus {
   CANCELLED
 }
 
+/// 收藏(多态:targetType + targetId 指向 Item/Service/Need,无 FK,应用层解析)。
 model Favorite {
-  id        String   @id @default(cuid())
-  userId    String
-  itemId    String
-  createdAt DateTime @default(now())
+  id         String              @id @default(cuid())
+  userId     String
+  targetType FavoriteTargetType
+  targetId   String
+  createdAt  DateTime            @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, itemId])
+  @@unique([userId, targetType, targetId])
   @@index([userId])
+  @@index([targetType, targetId])
+}
+
+enum FavoriteTargetType {
+  ITEM
+  SERVICE
+  NEED
 }
 
 // ───────────────────────── Service panel (咨询服务) ─────────────────────────

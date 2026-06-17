@@ -18,6 +18,7 @@ import {
   type MatchedSummary,
 } from "./need-detail-actions";
 import { ReportDialog } from "@/components/site/report-dialog";
+import { FavoriteButton } from "@/components/site/favorite-button";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +131,22 @@ export default async function NeedDetailPage({
         m.status === "CANCELLING")
   );
 
+  // 当前用户是否已收藏(用于标题栏心形)。
+  let isNeedFavorited = false;
+  if (viewerId) {
+    const fav = await prisma.favorite.findUnique({
+      where: {
+        userId_targetType_targetId: {
+          userId: viewerId,
+          targetType: "NEED",
+          targetId: id,
+        },
+      },
+      select: { id: true },
+    });
+    isNeedFavorited = !!fav;
+  }
+
   return (
     <PageContainer className="space-y-6">
       {/* ── 面包屑 ── */}
@@ -161,9 +178,18 @@ export default async function NeedDetailPage({
           {/* 标题 + 酬谢 + 徽章 */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <h1 className="font-serif text-2xl font-bold tracking-tight">
-                {need.title}
-              </h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-serif text-2xl font-bold tracking-tight">
+                  {need.title}
+                </h1>
+                {viewerId && !isRequester ? (
+                  <FavoriteButton
+                    targetType="NEED"
+                    targetId={need.id}
+                    favorited={isNeedFavorited}
+                  />
+                ) : null}
+              </div>
               <span className="font-serif text-2xl font-bold tabular-nums text-primary">
                 {need.reward}
               </span>
@@ -266,7 +292,7 @@ export default async function NeedDetailPage({
               <div className="text-sm">
                 <p className="font-medium text-foreground">安全交易提示</p>
                 <p className="mt-0.5 text-muted-foreground">
-                  撮合成功后再交换联系方式;线下沟通注意人身与信息安全。
+                  登录后即可查看联系方式;线下沟通注意人身与信息安全。
                 </p>
               </div>
             </CardContent>

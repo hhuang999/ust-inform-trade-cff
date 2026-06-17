@@ -359,6 +359,27 @@ export async function chooseProvider(matchId: string): Promise<ActionResult> {
     data: { matchId, needId: match.needId },
   });
 
+  // 通知其余候选应征者:需求已选定一位提供者,你仍在候选列表中(给他们闭环,而非无声等待)。
+  const otherApplicants = await prisma.needMatch.findMany({
+    where: {
+      needId: match.needId,
+      status: "APPLIED",
+      providerId: { not: match.providerId },
+    },
+    select: { providerId: true },
+  });
+  await Promise.all(
+    otherApplicants.map((m) =>
+      notify({
+        userId: m.providerId,
+        type: "need_candidate_update",
+        title: "该需求已选定一位提供者",
+        body: `「${need.title}」已选定一位提供者,你仍在候选列表中;若对方退出,需求方可能再联系你。`,
+        link: `/needs/${match.needId}`,
+      })
+    )
+  );
+
   revalidateNeedRoutes(match.needId);
   revalidatePath("/me/matches");
   return { ok: true };

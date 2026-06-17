@@ -119,7 +119,7 @@ export default async function MyItemsPage({
         deal: { select: { status: true } },
       },
     }),
-    // 我想要的:我的意向 + 物品(仅 AVAILABLE/PENDING,或自己拥有)。
+    // 我想要的:我的意向 + 物品(含意向队列与当前交易,用于展示排位/状态)。
     prisma.itemInterest.findMany({
       where: { userId: viewerId },
       orderBy: { createdAt: "desc" },
@@ -127,6 +127,8 @@ export default async function MyItemsPage({
         item: {
           include: {
             seller: { select: { id: true, nickname: true } },
+            interests: { select: { userId: true }, orderBy: { createdAt: "asc" } },
+            deal: { select: { buyerId: true, status: true } },
           },
         },
       },
@@ -317,22 +319,41 @@ export default async function MyItemsPage({
           </Empty>
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {wantedList.map((it) => (
-              <ItemCard
-                key={it.id}
-                id={it.item.id}
-                title={it.item.title}
-                priceMode={it.item.priceMode}
-                price={it.item.price}
-                firstImageKey={it.item.imageKeys[0] ?? null}
-                category={it.item.category}
-                condition={it.item.condition}
-                sellerNickname={it.item.seller.nickname}
-                sellerRating={ratingNumber(wantedSellerRatings, it.item.sellerId)}
-                status={it.item.status}
-                createdAt={it.item.createdAt}
-              />
-            ))}
+            {wantedList.map((it) => {
+              // 当前用户在该物品意向队列中的排位(按意向时间升序)。
+              const rankIdx = it.item.interests.findIndex(
+                (x) => x.userId === viewerId,
+              );
+              const rank = rankIdx >= 0 ? rankIdx + 1 : null;
+              const deal = it.item.deal;
+              const dealActive =
+                !!deal && (deal.status === "PENDING" || deal.status === "COMPLETED");
+              const chosenMe = dealActive && deal?.buyerId === viewerId;
+              const chosenOther = dealActive && deal?.buyerId !== viewerId;
+              const note = chosenMe
+                ? "卖家已选定你 · 请在「交易中」确认"
+                : chosenOther
+                  ? `第 ${rank ?? "-"} 位 · 卖家已选定他人,你为备选`
+                  : `第 ${rank ?? "-"} 位 · 等待卖家选择`;
+              return (
+                <div key={it.id} className="space-y-1.5">
+                  <ItemCard
+                    id={it.item.id}
+                    title={it.item.title}
+                    priceMode={it.item.priceMode}
+                    price={it.item.price}
+                    firstImageKey={it.item.imageKeys[0] ?? null}
+                    category={it.item.category}
+                    condition={it.item.condition}
+                    sellerNickname={it.item.seller.nickname}
+                    sellerRating={ratingNumber(wantedSellerRatings, it.item.sellerId)}
+                    status={it.item.status}
+                    createdAt={it.item.createdAt}
+                  />
+                  <p className="px-1 text-xs text-muted-foreground">{note}</p>
+                </div>
+              );
+            })}
           </div>
         )
       ) : null}

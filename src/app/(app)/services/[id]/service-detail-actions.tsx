@@ -859,7 +859,7 @@ export function ServiceDetailActions({
     );
   }
 
-  if (viewerVerified === true) {
+  if (viewerVerified !== null) {
     return (
       <ClientActions
         serviceId={serviceId}

@@ -12,8 +12,8 @@ describe("resolveContactInfo", () => {
     expect(resolveContactInfo({ visibility: "VERIFIED_ONLY", contactInfo: info, viewerVerified: null })).toBeNull();
   });
 
-  it("VERIFIED_ONLY: 未认证用户看不到", () => {
-    expect(resolveContactInfo({ visibility: "VERIFIED_ONLY", contactInfo: info, viewerVerified: false })).toBeNull();
+  it("VERIFIED_ONLY: 已登录未认证用户能看到(登录即可见)", () => {
+    expect(resolveContactInfo({ visibility: "VERIFIED_ONLY", contactInfo: info, viewerVerified: false })).toBe(info);
   });
 
   it("VERIFIED_ONLY: 已认证用户能看到", () => {
