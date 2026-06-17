@@ -1,6 +1,6 @@
 # 全产品冒烟手册 (Full Product)
 
-**分支**: `feat/paper-redesign-full-product`(基于 `feat/p0-user-auth-foundation`)。
+**分支**: 已提升为 `main`(主干)。原 `feat/paper-redesign-full-product` 直接 fast-forward 为 `main`,线性历史完整保留(`master` 脚手架 → `feat/p0-user-auth-foundation` 地基 → 纸感重构 + 全产品,无 merge 提交)。旧分支 `master`/`feat/p0-user-auth-foundation`/`feat/paper-redesign-full-product` 均已包含在 `main` 内,可按需删除。
 **范围**: 纸感风前端重构 + 全部 PRD 功能(用户/认证、二手物品、咨询服务、需求、撮合/预约、评价、举报、违规、管理后台、通知、Cron)。
 **设计基准**: `coze/` 参考(纸感风:暖橙棕 #C96F3D / 米黄底 #FBF3E7 / 衬线标题 / 暖棕柔影)。
 
