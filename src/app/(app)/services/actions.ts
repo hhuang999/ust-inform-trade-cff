@@ -226,10 +226,13 @@ export async function addServiceSlot(
 
   const service = await prisma.service.findUnique({
     where: { id: serviceId },
-    select: { providerId: true },
+    select: { providerId: true, status: true },
   });
   if (!service) return { ok: false, error: "服务不存在" };
   if (service.providerId !== actor.id) return { ok: false, error: "无权操作他人服务" };
+  if (service.status === "CLOSED") {
+    return { ok: false, error: "已关闭的服务不可修改时段" };
+  }
 
   try {
     await prisma.serviceSlot.create({
@@ -260,13 +263,16 @@ export async function removeServiceSlot(
 
   const service = await prisma.service.findUnique({
     where: { id: serviceId },
-    select: { providerId: true },
+    select: { providerId: true, status: true },
   });
   if (!service) return { ok: false, error: "服务不存在" };
   if (service.providerId !== actor.id) return { ok: false, error: "无权操作他人服务" };
+  if (service.status === "CLOSED") {
+    return { ok: false, error: "已关闭的服务不可修改时段" };
+  }
 
   const inUse = await prisma.booking.findFirst({
-    where: { slotId, status: { in: ["PENDING", "CONFIRMED"] } },
+    where: { slotId, status: { in: ["PENDING", "CONFIRMED", "CANCELLING"] } },
     select: { id: true },
   });
   if (inUse) return { ok: false, error: "该时段已有预约占用,无法移除" };
@@ -681,6 +687,7 @@ export async function confirmBookingComplete(
       link: "/me/bookings",
       data: { bookingId },
     });
+    revalidateServiceRoutes(booking.serviceId);
     revalidatePath("/me/bookings");
     return { ok: true, completed: false };
   }

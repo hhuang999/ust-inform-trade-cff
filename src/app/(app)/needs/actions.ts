@@ -413,6 +413,7 @@ export async function confirmNeedMatchComplete(
       link: "/me/matches",
       data: { matchId },
     });
+    revalidateNeedRoutes(match.needId);
     revalidatePath("/me/matches");
     return { ok: true, completed: false };
   }
