@@ -26,6 +26,9 @@ echo "Starting ust-inform-trade on 0.0.0.0:${PORT} (BASE_PATH=$BASE_PATH) ..."
 
 # 保险:若平台跳过 build 步骤,这里兜底生成 Prisma client 与构建产物
 pnpm prisma generate >/dev/null 2>&1 || true
+# 同步数据库 schema:应用未执行的迁移(幂等、非破坏性,不会清空数据)。
+# 失败不阻断启动(如 prisma CLI 不可用或网络抖动)——数据保存在远端 Neon,重建不重置。
+pnpm prisma migrate deploy || echo "[start] prisma migrate deploy 跳过/失败,继续启动(DB 数据不受影响)"
 if [ ! -f .next/BUILD_ID ]; then
   echo "No build found, building now..."
   pnpm next build
