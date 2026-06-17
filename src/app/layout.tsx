@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-// 沙箱/离线环境无法访问 Google Fonts(fonts.gstatic.com 被屏蔽,构建期会失败),
-// 因此不使用 next/font/google。字体改由 globals.css 的 :root 以系统字体栈定义
-// (--font-geist-sans / --font-geist-mono / --font-serif-google),零远程字体、零字体文件。
+// 字体全部使用 globals.css 里的系统字体栈,不引入任何远程字体。
 
 export const metadata: Metadata = {
   title: {
