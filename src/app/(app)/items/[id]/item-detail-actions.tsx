@@ -197,13 +197,15 @@ function GuestActions({ hasSession }: { hasSession: boolean }) {
 function DealStatusRow({
   dealId,
   dealStatus,
-  buyerNickname,
+  counterpartyLabel,
+  counterpartyNickname,
   firstConfirmerId,
   viewerId,
 }: {
   dealId: string;
   dealStatus: "PENDING" | "COMPLETED";
-  buyerNickname: string;
+  counterpartyLabel: string;
+  counterpartyNickname: string;
   firstConfirmerId: string | null;
   viewerId: string;
 }) {
@@ -238,7 +240,7 @@ function DealStatusRow({
         当前交易 · {dealStatus === "COMPLETED" ? "已完成" : "进行中"}
       </p>
       <p className="mb-3 text-sm text-foreground">
-        买家：<span className="font-medium">{buyerNickname}</span>
+        {counterpartyLabel}：<span className="font-medium">{counterpartyNickname}</span>
       </p>
       {dealStatus === "PENDING" ? (
         <div className="flex gap-2">
@@ -280,7 +282,7 @@ function SellerInterests({
   currentDeal: CurrentDeal | null;
   viewerId: string;
 }) {
-  const [pendingId, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
 
   function handleChoose(buyerUserId: string) {
     startTransition(async () => {
@@ -309,7 +311,8 @@ function SellerInterests({
           <DealStatusRow
             dealId={currentDeal.dealId}
             dealStatus={currentDeal.status}
-            buyerNickname={currentDeal.buyerNickname}
+            counterpartyLabel="买家"
+            counterpartyNickname={currentDeal.buyerNickname}
             firstConfirmerId={currentDeal.firstConfirmerId}
             viewerId={viewerId}
           />
@@ -359,7 +362,7 @@ function SellerInterests({
                       size="sm"
                       variant="outline"
                       onClick={() => handleChoose(it.userId)}
-                      disabled={pendingId !== null}
+                      disabled={pending}
                     >
                       选择与TA交易
                     </Button>
@@ -445,6 +448,7 @@ export interface ItemDetailActionsProps {
   contact: string | null;
   interests: InterestSummary[];
   currentDeal: CurrentDeal | null;
+  sellerNickname: string | null;
 }
 
 /**
@@ -460,6 +464,7 @@ export function ItemDetailActions({
   contact,
   interests,
   currentDeal,
+  sellerNickname,
 }: ItemDetailActionsProps) {
   if (isSeller) {
     if (!viewerId) return null;
@@ -478,7 +483,24 @@ export function ItemDetailActions({
 
   // 非卖家:已认证 → 买家动作;否则游客提示。
   if (viewerVerified === true) {
-    return <BuyerActions itemId={itemId} contact={contact} isFavorited={isFavorited} hasInterest={hasInterest} />;
+    // 当前买家正是这笔进行中/已完成交易的对象 → 显示确认完成卡。
+    const isBuyerInDeal =
+      !!currentDeal && !!viewerId && currentDeal.buyerId === viewerId;
+    return (
+      <div className="space-y-4">
+        {isBuyerInDeal ? (
+          <DealStatusRow
+            dealId={currentDeal!.dealId}
+            dealStatus={currentDeal!.status}
+            counterpartyLabel="卖家"
+            counterpartyNickname={sellerNickname ?? "卖家"}
+            firstConfirmerId={currentDeal!.firstConfirmerId}
+            viewerId={viewerId!}
+          />
+        ) : null}
+        <BuyerActions itemId={itemId} contact={contact} isFavorited={isFavorited} hasInterest={hasInterest} />
+      </div>
+    );
   }
 
   return <GuestActions hasSession={viewerVerified !== null} />;

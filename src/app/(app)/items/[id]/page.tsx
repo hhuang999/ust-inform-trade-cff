@@ -377,6 +377,7 @@ export default async function ItemDetailPage({
             contact={contact}
             interests={interests}
             currentDeal={currentDeal}
+            sellerNickname={item.seller.nickname}
           />
 
           {/* 安全提示 */}

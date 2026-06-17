@@ -12,7 +12,12 @@ function createPrismaClient(): PrismaClient {
     throw new Error("DATABASE_URL is not set.");
   }
   const adapter = new PrismaPg({ connectionString });
-  return new PrismaClient({ adapter, log: ["error", "warn"] });
+  return new PrismaClient({
+    adapter,
+    log: ["error", "warn"],
+    // 远端 DB(Neon)延迟高于本地,放宽事务默认超时(默认 5s 在多语句事务下易超时)。
+    transactionOptions: { maxWait: 10000, timeout: 20000 },
+  });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

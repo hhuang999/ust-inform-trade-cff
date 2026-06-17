@@ -373,7 +373,7 @@ export async function confirmItemComplete(
     return { ok: false, error: "你已确认,请等待对方确认" };
   }
 
-  // 第二方确认 -> 完成。
+  // 第二方确认 -> 完成。(事务超时已在 db.ts 全局放宽,适配 Neon 延迟。)
   await prisma.$transaction([
     prisma.itemDeal.update({
       where: { id: dealId },
