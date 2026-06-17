@@ -73,35 +73,43 @@ export default async function Home() {
     nickname = me?.nickname ?? null;
   }
 
-  // 首页统计与最新物品/服务/需求:廉价 count / limit 查询,DB 空时安全降级。
-  const [availableItems, verifiedUsers, latestItems, latestServices, latestNeeds] =
-    await Promise.all([
-      prisma.item.count({ where: { status: "AVAILABLE" } }),
-      prisma.user.count({
-        where: { verificationStatus: "VERIFIED", deletedAt: null },
-      }),
-      prisma.item.findMany({
-        where: { status: "AVAILABLE", deletedAt: null },
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        include: { seller: { select: { nickname: true } } },
-      }),
-      prisma.service.findMany({
-        where: { status: "ACTIVE", deletedAt: null },
-        orderBy: { createdAt: "desc" },
-        take: 4,
-        include: { provider: { select: { nickname: true } } },
-      }),
-      prisma.need.findMany({
-        where: { status: "OPEN", deletedAt: null },
-        orderBy: { createdAt: "desc" },
-        take: 4,
-        include: {
-          requester: { select: { nickname: true } },
-          matches: { where: { status: "APPLIED" }, select: { id: true } },
-        },
-      }),
-    ]);
+  // 首页统计与最新物品/服务/需求:廉价 count / limit 查询。
+  // 用 allSettled 让每个查询独立结算 —— 远端 DB(Neon)冷启动/高延迟时单个查询
+  // 可能超时,失败的那个降级为空,其余照常渲染,首页永不因 DB 抖动而 500。
+  const discovery = await Promise.allSettled([
+    prisma.item.count({ where: { status: "AVAILABLE" } }),
+    prisma.user.count({
+      where: { verificationStatus: "VERIFIED", deletedAt: null },
+    }),
+    prisma.item.findMany({
+      where: { status: "AVAILABLE", deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: { seller: { select: { nickname: true } } },
+    }),
+    prisma.service.findMany({
+      where: { status: "ACTIVE", deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      include: { provider: { select: { nickname: true } } },
+    }),
+    prisma.need.findMany({
+      where: { status: "OPEN", deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      include: {
+        requester: { select: { nickname: true } },
+        matches: { where: { status: "APPLIED" }, select: { id: true } },
+      },
+    }),
+  ]);
+  const ok = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
+    r.status === "fulfilled" ? r.value : fallback;
+  const availableItems = ok(discovery[0], 0);
+  const verifiedUsers = ok(discovery[1], 0);
+  const latestItems = ok(discovery[2], []);
+  const latestServices = ok(discovery[3], []);
+  const latestNeeds = ok(discovery[4], []);
 
   const stats = [
     { label: "在售物品", value: availableItems },

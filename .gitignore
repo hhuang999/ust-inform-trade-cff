@@ -46,5 +46,9 @@ next-env.d.ts
 # local-only credential / account notes (never commit)
 docs/*.local.md
 
+# sandbox SSH helpers — hardcode the devbox password, never commit
+scripts/ssh-run.py
+scripts/ssh-upload-scripts.py
+
 # reference design project (standalone repo, not part of this app)
 /coze/
