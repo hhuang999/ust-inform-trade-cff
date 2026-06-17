@@ -2,6 +2,7 @@
 
 import { AuthError } from "next-auth";
 import { signIn } from "@/lib/auth";
+import { withBasePath } from "@/lib/base-path";
 import { loginSchema } from "@/lib/validation/user";
 
 export type LoginState = { error?: string };
@@ -17,7 +18,9 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     await signIn("credentials", {
       identifier: parsed.data.identifier,
       password: parsed.data.password,
-      redirectTo: "/",
+      // Auth.js 回调路由的最终重定向是原生 HTTP 302,不应用 Next basePath;
+      // 需手动带前缀,否则会落到平台根 / 而非 app 首页。
+      redirectTo: withBasePath("/"),
     });
   } catch (e) {
     if (e instanceof AuthError) {
