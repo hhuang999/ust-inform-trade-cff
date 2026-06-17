@@ -32,7 +32,9 @@ const baseShape = {
     .max(9, "最多 9 张图片"),
   categories: categoryArray,
   formats: formatArray,
-  durationTier: durationTierEnum.optional(),
+  // 创建表单 durationTier 默认 null(未选时长),须 nullable 才能通过;
+  // 与 serviceUpdateSchema 一致。Prisma Service.durationTier 本身可选(nullable)。
+  durationTier: durationTierEnum.nullable().optional(),
   price: z
     .string()
     .trim()
