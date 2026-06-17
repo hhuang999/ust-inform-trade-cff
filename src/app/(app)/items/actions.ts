@@ -205,6 +205,59 @@ export async function closeItem(itemId: string): Promise<ActionResult> {
 }
 
 /**
+ * 卖家重新上架已关闭的物品(CLOSED→AVAILABLE)。
+ */
+export async function relistItem(itemId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { sellerId: true, status: true },
+  });
+  if (!item) return { ok: false, error: "物品不存在" };
+  if (item.sellerId !== actor.id) return { ok: false, error: "无权操作他人物品" };
+  if (item.status !== "CLOSED") {
+    return { ok: false, error: "仅已关闭的物品可重新上架" };
+  }
+
+  await prisma.item.update({
+    where: { id: itemId },
+    data: { status: "AVAILABLE" },
+  });
+  revalidateItemRoutes(itemId);
+  return { ok: true };
+}
+
+/**
+ * 卖家删除物品(软删除:置 deletedAt,从所有列表隐藏;PRD §10)。
+ * 交易中(PENDING)的物品不可删除,需先取消交易。
+ */
+export async function deleteItem(itemId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { sellerId: true, status: true, deletedAt: true },
+  });
+  if (!item) return { ok: false, error: "物品不存在" };
+  if (item.sellerId !== actor.id) return { ok: false, error: "无权操作他人物品" };
+  if (item.status === "PENDING") {
+    return { ok: false, error: "交易中的物品不可删除,请先取消交易" };
+  }
+  if (item.deletedAt) return { ok: false, error: "该物品已删除" };
+
+  await prisma.item.update({
+    where: { id: itemId },
+    data: { deletedAt: new Date() },
+  });
+  revalidateItemRoutes(itemId);
+  revalidatePath("/me/items");
+  return { ok: true };
+}
+
+/**
  * 收藏/取消收藏(唯一 [userId, itemId],upsert 切换)。
  */
 export async function toggleFavorite(

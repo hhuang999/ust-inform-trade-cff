@@ -81,19 +81,19 @@ export default async function Home() {
         where: { verificationStatus: "VERIFIED", deletedAt: null },
       }),
       prisma.item.findMany({
-        where: { status: "AVAILABLE" },
+        where: { status: "AVAILABLE", deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 8,
         include: { seller: { select: { nickname: true } } },
       }),
       prisma.service.findMany({
-        where: { status: "ACTIVE" },
+        where: { status: "ACTIVE", deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 4,
         include: { provider: { select: { nickname: true } } },
       }),
       prisma.need.findMany({
-        where: { status: "OPEN" },
+        where: { status: "OPEN", deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 4,
         include: {

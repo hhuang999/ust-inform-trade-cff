@@ -286,6 +286,46 @@ export async function applyToNeed(
   return { ok: true, matchId: match.id };
 }
 
+/**
+ * 提供者撤回应征(APPLIED→NOT_SELECTED),通知需求方(PRD §4.7「应征者可撤回」)。
+ */
+export async function withdrawNeedMatch(matchId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const match = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: { needId: true, providerId: true, status: true },
+  });
+  if (!match) return { ok: false, error: "应征记录不存在" };
+  if (match.providerId !== actor.id) return { ok: false, error: "只有应征者可撤回" };
+  if (match.status !== "APPLIED") return { ok: false, error: "该应征当前不可撤回" };
+
+  const need = await prisma.need.findUnique({
+    where: { id: match.needId },
+    select: { requesterId: true, title: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+
+  await prisma.needMatch.update({
+    where: { id: matchId },
+    data: { status: "NOT_SELECTED" },
+  });
+
+  await notify({
+    userId: need.requesterId,
+    type: "need_withdrawn",
+    title: "一条应征已被撤回",
+    body: `「${need.title}」的一条应征已被提供者撤回。`,
+    link: `/needs/${match.needId}`,
+    data: { matchId },
+  });
+
+  revalidateNeedRoutes(match.needId);
+  revalidatePath("/me/matches");
+  return { ok: true };
+}
+
 /** 发布者选定提供者(match APPLIED→MATCHED)。通知提供者。 */
 export async function chooseProvider(matchId: string): Promise<ActionResult> {
   const actor = await resolveActor();

@@ -78,6 +78,7 @@ export default async function ItemsPage({
     : ["AVAILABLE"];
   const where: Prisma.ItemWhereInput = {
     status: { in: status },
+    deletedAt: null,
     ...(category ? { category } : {}),
     ...(search
       ? {

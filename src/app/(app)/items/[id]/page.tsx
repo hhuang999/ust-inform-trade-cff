@@ -112,7 +112,7 @@ export default async function ItemDetailPage({
     },
   });
 
-  if (!item) notFound();
+  if (!item || item.deletedAt) notFound();
 
   const session = await auth();
   const viewerId = session?.user?.id ?? null;
