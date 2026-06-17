@@ -258,29 +258,6 @@ export async function deleteItem(itemId: string): Promise<ActionResult> {
 }
 
 /**
- * 收藏/取消收藏(唯一 [userId, itemId],upsert 切换)。
- */
-export async function toggleFavorite(
-  itemId: string
-): Promise<ActionResult<{ favorited: boolean }>> {
-  const actor = await resolveActor();
-  if ("error" in actor) return { ok: false, error: actor.error };
-
-  const existing = await prisma.favorite.findUnique({
-    where: { userId_itemId: { userId: actor.id, itemId } },
-    select: { id: true },
-  });
-  if (existing) {
-    await prisma.favorite.delete({ where: { id: existing.id } });
-    revalidateItemRoutes(itemId);
-    return { ok: true, favorited: false };
-  }
-  await prisma.favorite.create({ data: { userId: actor.id, itemId } });
-  revalidateItemRoutes(itemId);
-  return { ok: true, favorited: true };
-}
-
-/**
  * 表达购买意向(状态须为 AVAILABLE 或 PENDING)。通知卖家。
  */
 export async function expressInterest(
@@ -474,6 +451,23 @@ export async function confirmItemComplete(
         body: "交易已完成,请对本次交易进行评价",
         link: "/me/items",
         data: { dealId, itemId: deal.itemId },
+      })
+    )
+  );
+
+  // 通知其余意向人:物品已售出(给他们闭环,而非无声等待)。
+  const otherInterestHolders = await prisma.itemInterest.findMany({
+    where: { itemId: deal.itemId, userId: { notIn: [deal.sellerId, deal.buyerId] } },
+    select: { userId: true },
+  });
+  await Promise.all(
+    otherInterestHolders.map((it) =>
+      notify({
+        userId: it.userId,
+        type: "item_sold_out",
+        title: "你想要的物品已售出",
+        body: "你之前表达过意向的物品已被他人买下",
+        link: "/me/items",
       })
     )
   );

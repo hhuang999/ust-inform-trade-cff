@@ -42,6 +42,7 @@ import {
   type InterestSummary,
 } from "./item-detail-actions";
 import { ReportDialog } from "@/components/site/report-dialog";
+import { FavoriteButton } from "@/components/site/favorite-button";
 
 export const dynamic = "force-dynamic";
 
@@ -140,7 +141,13 @@ export default async function ItemDetailPage({
   if (viewerId) {
     const [fav, interest] = await Promise.all([
       prisma.favorite.findUnique({
-        where: { userId_itemId: { userId: viewerId, itemId: id } },
+        where: {
+          userId_targetType_targetId: {
+            userId: viewerId,
+            targetType: "ITEM",
+            targetId: id,
+          },
+        },
         select: { id: true },
       }),
       prisma.itemInterest.findUnique({
@@ -165,6 +172,7 @@ export default async function ItemDetailPage({
     verificationStatus: it.user.verificationStatus as VerificationStatus,
     avatarUrl: publicUrl(it.user.avatarKey),
     rating: ratingNumber(interestRatings, it.user.id),
+    message: it.message,
     createdAt: it.createdAt.toISOString(),
   }));
 
@@ -265,9 +273,18 @@ export default async function ItemDetailPage({
           {/* 标题 + 价格 + 徽章 */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <h1 className="font-serif text-2xl font-bold tracking-tight">
-                {item.title}
-              </h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-serif text-2xl font-bold tracking-tight">
+                  {item.title}
+                </h1>
+                {viewerId && !isSeller ? (
+                  <FavoriteButton
+                    targetType="ITEM"
+                    targetId={item.id}
+                    favorited={isFavorited}
+                  />
+                ) : null}
+              </div>
               <span className="font-serif text-3xl font-bold tabular-nums text-primary">
                 {priceText}
               </span>
@@ -282,6 +299,11 @@ export default async function ItemDetailPage({
               {item.priceMode === "NEGOTIABLE" ? (
                 <Badge variant="outline" className="font-normal">
                   可议价
+                </Badge>
+              ) : null}
+              {!isSeller && item.interests.length > 0 ? (
+                <Badge variant="secondary" className="font-normal">
+                  {item.interests.length} 人想要
                 </Badge>
               ) : null}
               {item.status === "PENDING" ? (
@@ -379,7 +401,6 @@ export default async function ItemDetailPage({
             isSeller={isSeller}
             viewerVerified={viewerVerified}
             viewerId={viewerId}
-            isFavorited={isFavorited}
             hasInterest={hasInterest}
             contact={contact}
             interests={interests}

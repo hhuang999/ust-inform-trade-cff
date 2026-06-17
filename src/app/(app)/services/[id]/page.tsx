@@ -30,6 +30,7 @@ import {
   type SlotSummary,
 } from "./service-detail-actions";
 import { ReportDialog } from "@/components/site/report-dialog";
+import { FavoriteButton } from "@/components/site/favorite-button";
 
 export const dynamic = "force-dynamic";
 
@@ -176,6 +177,22 @@ export default async function ServiceDetailPage({
     (s) => !occupiedSlotIds.has(s.id)
   );
 
+  // 当前用户是否已收藏(用于标题栏心形)。
+  let isServiceFavorited = false;
+  if (viewerId) {
+    const fav = await prisma.favorite.findUnique({
+      where: {
+        userId_targetType_targetId: {
+          userId: viewerId,
+          targetType: "SERVICE",
+          targetId: id,
+        },
+      },
+      select: { id: true },
+    });
+    isServiceFavorited = !!fav;
+  }
+
   const proofImages = service.proofImageKeys
     .map((k) => publicUrl(k))
     .filter((u): u is string => !!u);
@@ -245,9 +262,18 @@ export default async function ServiceDetailPage({
           {/* 标题 + 价格 + 徽章 */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <h1 className="font-serif text-2xl font-bold tracking-tight">
-                {service.title}
-              </h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-serif text-2xl font-bold tracking-tight">
+                  {service.title}
+                </h1>
+                {viewerId && !isProvider ? (
+                  <FavoriteButton
+                    targetType="SERVICE"
+                    targetId={service.id}
+                    favorited={isServiceFavorited}
+                  />
+                ) : null}
+              </div>
               <span className="font-serif text-2xl font-bold tabular-nums text-primary">
                 {service.price}
               </span>

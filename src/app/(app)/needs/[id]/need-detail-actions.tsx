@@ -257,6 +257,17 @@ function RequesterApplicants({
       </CardHeader>
       <CardContent className="space-y-3">
         {matches.length > 0 ? (
+          <p className="rounded-md bg-verified-soft/60 px-3 py-2 text-xs text-foreground/80">
+            已选定 {matches.length} 位提供者
+            {applicants.length > 0 ? ` · 另有 ${applicants.length} 位候选中` : ""}
+          </p>
+        ) : applicants.length > 0 ? (
+          <p className="rounded-md bg-accent/60 px-3 py-2 text-xs text-muted-foreground">
+            当前 {applicants.length} 位候选应征;选定一位后,其余仍保留为候选。
+          </p>
+        ) : null}
+
+        {matches.length > 0 ? (
           <div className="space-y-3">
             {matches.map((m) => (
               <MatchStatusRow key={m.matchId} match={m} />
@@ -607,7 +618,7 @@ export function NeedDetailActions({
     );
   }
 
-  if (viewerVerified === true) {
+  if (viewerVerified !== null) {
     return (
       <ProviderActions
         needId={needId}

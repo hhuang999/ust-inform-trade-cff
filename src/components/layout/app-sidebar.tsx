@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Bell,
   Handshake,
+  Heart,
   Package,
   Settings,
   ShieldCheck,
@@ -39,6 +40,7 @@ function mineItems(userId: string): NavItem[] {
     { label: "我的物品", href: "/me/items", icon: Package },
     { label: "我的服务", href: "/me/services", icon: Wrench },
     { label: "我的需求", href: "/me/needs", icon: HandHeart },
+    { label: "我的收藏", href: "/me/favorites", icon: Heart },
     { label: "服务预约", href: "/me/bookings", icon: ShoppingCart },
     { label: "需求撮合", href: "/me/matches", icon: Handshake },
     { label: "通知", href: "/notifications", icon: Bell },
