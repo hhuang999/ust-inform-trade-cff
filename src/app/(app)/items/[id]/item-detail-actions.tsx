@@ -46,6 +46,14 @@ import {
   toggleFavorite,
 } from "@/app/(app)/items/actions";
 
+/** 意向点击时间格式化为 MM-DD。 */
+function formatInterestTime(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 /**
  * 买家侧动作卡(已认证、非卖家)。
  * - 我想要(expressInterest)、收藏(toggleFavorite)、联系方式展示。
@@ -348,9 +356,15 @@ function SellerInterests({
                         {it.nickname}
                       </span>
                       <Badge status={it.verificationStatus} />
+                      {typeof it.rating === "number" ? (
+                        <span className="text-xs text-warning">
+                          ★ {it.rating.toFixed(1)}
+                        </span>
+                      ) : null}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
-                      {it.department} · {it.enrollmentYear} 级
+                      {it.department} · {it.enrollmentYear} 级 · 点击于{" "}
+                      {formatInterestTime(it.createdAt)}
                     </p>
                   </div>
                   {isCurrentBuyer ? (
@@ -427,6 +441,8 @@ export interface InterestSummary {
   enrollmentYear: number;
   verificationStatus: VerificationStatus;
   avatarUrl: string | null;
+  rating?: number | null;
+  createdAt: string;
 }
 
 export interface CurrentDeal {

@@ -25,6 +25,7 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 import { ITEM_CATEGORIES } from "@/lib/constants/item";
+import { aggregateRatings, ratingNumber } from "@/lib/reputation";
 import { PackageOpen } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -109,6 +110,11 @@ export default async function ItemsPage({
       },
     }),
   ]);
+
+  const sellerRatings = await aggregateRatings(
+    items.map((i) => i.sellerId),
+    "ITEM",
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentCategory = category ?? "";
@@ -244,7 +250,7 @@ export default async function ItemsPage({
               category={item.category}
               condition={item.condition}
               sellerNickname={item.seller.nickname}
-              sellerRating={undefined}
+              sellerRating={ratingNumber(sellerRatings, item.sellerId)}
               status={item.status}
               createdAt={item.createdAt}
             />

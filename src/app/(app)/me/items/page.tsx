@@ -14,6 +14,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireVerifiedUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { aggregateRatings, ratingNumber } from "@/lib/reputation";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { ItemCard } from "@/components/site/item-card";
@@ -161,6 +162,12 @@ export default async function MyItemsPage({
       it.item.seller.id === viewerId
     );
   });
+
+  // 我想要列表里各卖家的物品交易评分(信誉标签,§3.7)。
+  const wantedSellerRatings = await aggregateRatings(
+    wantedList.map((it) => it.item.sellerId),
+    "ITEM",
+  );
 
   return (
     <PageContainer className="space-y-6">
@@ -321,7 +328,7 @@ export default async function MyItemsPage({
                 category={it.item.category}
                 condition={it.item.condition}
                 sellerNickname={it.item.seller.nickname}
-                sellerRating={undefined}
+                sellerRating={ratingNumber(wantedSellerRatings, it.item.sellerId)}
                 status={it.item.status}
                 createdAt={it.item.createdAt}
               />

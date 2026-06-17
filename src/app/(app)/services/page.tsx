@@ -25,6 +25,7 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 import { SERVICE_CATEGORIES, SERVICE_FORMATS } from "@/lib/constants/service";
+import { aggregateRatings, ratingNumber } from "@/lib/reputation";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,11 @@ export default async function ServicesPage({
       },
     }),
   ]);
+
+  const providerRatings = await aggregateRatings(
+    services.map((s) => s.providerId),
+    "BOOKING",
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentCategory = category ?? "";
@@ -299,7 +305,7 @@ export default async function ServicesPage({
               price={s.price}
               durationTier={s.durationTier}
               proofFirstImageKey={s.proofImageKeys[0] ?? null}
-              rating={undefined}
+              rating={ratingNumber(providerRatings, s.providerId)}
               status={s.status}
               createdAt={s.createdAt}
             />

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { prisma } from "@/lib/db";
+import { aggregateRatings, ratingNumber } from "@/lib/reputation";
 import { auth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { resolveContactInfo } from "@/lib/verification/contact-visibility";
@@ -152,6 +153,10 @@ export default async function ItemDetailPage({
   }
 
   // 意向人摘要(传给客户端组件;注意全部为可序列化基本类型)。
+  const interestRatings = await aggregateRatings(
+    item.interests.map((it) => it.user.id),
+    "ITEM",
+  );
   const interests: InterestSummary[] = item.interests.map((it) => ({
     userId: it.user.id,
     nickname: it.user.nickname,
@@ -159,6 +164,8 @@ export default async function ItemDetailPage({
     enrollmentYear: it.user.enrollmentYear,
     verificationStatus: it.user.verificationStatus as VerificationStatus,
     avatarUrl: publicUrl(it.user.avatarKey),
+    rating: ratingNumber(interestRatings, it.user.id),
+    createdAt: it.createdAt.toISOString(),
   }));
 
   // 当前进行中 / 已完成的交易(忽略已取消)。
