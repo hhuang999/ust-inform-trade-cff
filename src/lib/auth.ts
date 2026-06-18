@@ -58,7 +58,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // 使「管理员通过认证 / 封禁 / 降级」在数分钟内对在线用户生效,
       // 而非等到其重新登录。
       const last = typeof token.refreshedAt === "number" ? token.refreshedAt : 0;
-      const id = token.id;
+      // token.id 来自 JWT 索引类型(松散),显式断言为 string|undefined 以便下面 if 收窄。
+      const id = token.id as string | undefined;
       if (id && Date.now() - last > ROLE_REFRESH_INTERVAL_MS) {
         try {
           const u = await prisma.user.findUnique({
