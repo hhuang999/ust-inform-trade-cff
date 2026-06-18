@@ -318,10 +318,10 @@ export default async function ServicesPage({
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                href={withBasePath(buildHref({
+                href={buildHref({
                   ...baseParams,
                   page: page > 1 ? String(page - 1) : undefined,
-                }))}
+                })}
                 aria-disabled={page <= 1}
                 className={page <= 1 ? "pointer-events-none opacity-50" : ""}
               />
@@ -329,10 +329,10 @@ export default async function ServicesPage({
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
               <PaginationItem key={p}>
                 <PaginationLink
-                  href={withBasePath(buildHref({
+                  href={buildHref({
                     ...baseParams,
                     page: p > 1 ? String(p) : undefined,
-                  }))}
+                  })}
                   isActive={p === page}
                 >
                   {p}
@@ -341,10 +341,10 @@ export default async function ServicesPage({
             ))}
             <PaginationItem>
               <PaginationNext
-                href={withBasePath(buildHref({
+                href={buildHref({
                   ...baseParams,
                   page: page < totalPages ? String(page + 1) : undefined,
-                }))}
+                })}
                 aria-disabled={page >= totalPages}
                 className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
               />
