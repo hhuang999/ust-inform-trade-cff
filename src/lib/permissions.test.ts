@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   requireVerifiedUser,
   NotAuthenticatedError,
-  NotVerifiedError,
   isAdmin,
 } from "@/lib/permissions";
 
@@ -13,11 +12,12 @@ describe("permissions", () => {
     expect(() => requireVerifiedUser(null)).toThrow(NotAuthenticatedError);
   });
 
-  it("throws NotVerifiedError when not VERIFIED", () => {
+  // 认证自 2026-06-18 起不再作为访问门槛:未认证用户也能用(仅缺徽章)。
+  it("returns the user even when not VERIFIED (login-only policy)", () => {
     const u: U = { id: "1", verificationStatus: "UNVERIFIED", role: "USER" };
-    expect(() => requireVerifiedUser(u)).toThrow(NotVerifiedError);
+    expect(requireVerifiedUser(u)).toBe(u);
     u.verificationStatus = "PENDING";
-    expect(() => requireVerifiedUser(u)).toThrow(NotVerifiedError);
+    expect(requireVerifiedUser(u)).toBe(u);
   });
 
   it("returns the user when VERIFIED", () => {

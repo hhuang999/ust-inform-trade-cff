@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 
-import { submitVerificationAction, type SubmitState } from "./actions";
+import { submitVerificationAction, updateAvatarAction, type SubmitState } from "./actions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { type VerificationStatus } from "@/components/ui/badge";
@@ -144,7 +144,14 @@ export default function SettingsForm({
       // 用真实 R2 key 拼出公开 URL 作为最终预览
       const publicUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL}/${presigned.key}`;
       setAvatarPreview(publicUrl);
-      toast.success("头像已更新");
+      // 持久化 avatarKey 到 DB(此前只更新前端预览,刷新即丢失、R2 留孤儿对象)。
+      const saved = await updateAvatarAction(presigned.key);
+      if (saved.ok) {
+        toast.success("头像已更新");
+      } else {
+        toast.error(saved.error ?? "头像保存失败");
+        setAvatarPreview(avatarUrl);
+      }
     } else {
       setAvatarPreview(avatarUrl); // 失败回退到原图
     }
