@@ -56,3 +56,26 @@ export async function submitVerificationAction(_prev: SubmitState, formData: For
   revalidatePath("/settings");
   return { ok: true };
 }
+
+/**
+ * 更新头像:上传到 R2 成功后,把 avatarKey 持久化到 User。
+ * (此前只更新前端预览,刷新即丢失,且 R2 留下孤儿对象。)
+ * 归属校验:key 必须落在本人的公开 avatar 前缀下。
+ */
+export async function updateAvatarAction(
+  avatarKey: string
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "请先登录" };
+  const key = avatarKey.trim();
+  const ownPrefix = `public/avatars/${session.user.id}/`;
+  if (!key.startsWith(ownPrefix)) return { ok: false, error: "头像校验失败" };
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { avatarKey: key },
+  });
+  revalidatePath("/settings");
+  revalidatePath(`/profile/${session.user.id}`);
+  return { ok: true };
+}

@@ -77,7 +77,7 @@ export default async function Home() {
   // 用 allSettled 让每个查询独立结算 —— 远端 DB(Neon)冷启动/高延迟时单个查询
   // 可能超时,失败的那个降级为空,其余照常渲染,首页永不因 DB 抖动而 500。
   const discovery = await Promise.allSettled([
-    prisma.item.count({ where: { status: "AVAILABLE" } }),
+    prisma.item.count({ where: { status: "AVAILABLE", deletedAt: null } }),
     prisma.user.count({
       where: { verificationStatus: "VERIFIED", deletedAt: null },
     }),

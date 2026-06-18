@@ -385,7 +385,9 @@ export async function chooseProvider(matchId: string): Promise<ActionResult> {
 
   await prisma.needMatch.update({
     where: { id: matchId },
-    data: { status: "MATCHED" },
+    // 写 matchedAt:cron「双方均未确认 7 天自动完成」分支以 matchedAt 为锚点,
+    // 不写则该分支永不命中,撮合永久卡死、无法互评。
+    data: { status: "MATCHED", matchedAt: new Date() },
   });
 
   await notify({
