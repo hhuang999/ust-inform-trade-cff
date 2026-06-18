@@ -62,12 +62,12 @@ const baseShape = {
   category: categoryEnum,
   condition: conditionEnum,
   priceMode: priceModeEnum,
-  price: z.number().int("价格须为整数").nonnegative("价格不能为负").optional(),
+  price: z.number().int("价格须为整数").nonnegative("价格不能为负").nullish(),
   originalPrice: z
     .number()
     .int("原价须为整数")
     .nonnegative("原价不能为负")
-    .optional(),
+    .nullish(),
   imageKeys: z
     .array(z.string().min(1, "图片 key 不能为空"))
     .min(1, "至少上传 1 张图片")
