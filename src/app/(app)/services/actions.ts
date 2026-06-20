@@ -644,6 +644,58 @@ export async function decideBookingLiability(
 }
 
 /**
+ * 取消方撤回取消(CANCELLING→CONFIRMED,清空 cancelledBy*)。
+ * 用于误点「申请取消」后回退,使预约恢复进行(非硬终止)。仅取消发起方可撤回。
+ */
+export async function resumeBooking(bookingId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { serviceId: true, status: true, clientId: true, cancelledById: true },
+  });
+  if (!booking) return { ok: false, error: "预约不存在" };
+  if (booking.status !== "CANCELLING") {
+    return { ok: false, error: "该预约当前不在取消协商中" };
+  }
+  if (booking.cancelledById !== actor.id) {
+    return { ok: false, error: "只有取消发起方可撤回取消" };
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { id: booking.serviceId },
+    select: { providerId: true },
+  });
+  if (!service) return { ok: false, error: "服务不存在" };
+
+  await prisma.booking.update({
+    where: { id: bookingId },
+    data: {
+      status: "CONFIRMED",
+      cancelledById: null,
+      cancelledAt: null,
+      liabilityAgreed: null,
+      liabilityDecidedAt: null,
+    },
+  });
+
+  const otherId = actor.id === booking.clientId ? service.providerId : booking.clientId;
+  await notify({
+    userId: otherId,
+    type: "service_cancel_withdrawn",
+    title: "对方已撤回取消",
+    body: "对方撤回了本次取消申请,预约继续进行。",
+    link: "/me/bookings",
+    data: { bookingId },
+  });
+
+  revalidateServiceRoutes(booking.serviceId);
+  revalidatePath("/me/bookings");
+  return { ok: true };
+}
+
+/**
  * 任一参与方确认完成(双方各确认一次)。
  * - 第一方 → 设置 firstConfirmer,通知对方;
  * - 第二方 → COMPLETED,通知双方评价。

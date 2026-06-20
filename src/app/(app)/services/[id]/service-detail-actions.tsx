@@ -15,6 +15,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RotateCcw,
   ShieldCheck,
   Trash2,
   XCircle,
@@ -58,6 +59,7 @@ import {
   rejectBooking,
   removeServiceSlot,
   requestCancelBooking,
+  resumeBooking,
   resumeService,
 } from "@/app/(app)/services/actions";
 
@@ -224,9 +226,26 @@ function BookingStatusRow({ booking }: { booking: ActiveBooking }) {
 
       {booking.status === "CANCELLING" ? (
         booking.isCanceller ? (
-          <p className="text-xs text-muted-foreground">
-            你已申请取消,等待对方决定是否同意免责。
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-muted-foreground">
+              你已申请取消,等待对方决定是否同意免责。
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const res = await resumeBooking(booking.id);
+                  if (res.ok) toast.success("已撤回取消,预约继续");
+                  else toast.error(res.error);
+                })
+              }
+            >
+              <RotateCcw />
+              撤回取消
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-wrap gap-2">
             <Button

@@ -13,6 +13,7 @@ import {
   Pause,
   Pencil,
   Play,
+  RotateCcw,
   ShieldCheck,
   Users,
   XCircle,
@@ -54,6 +55,7 @@ import {
   pauseNeed,
   rejectApplicant,
   requestCancelNeedMatch,
+  resumeNeedMatch,
   resumeNeed,
 } from "@/app/(app)/needs/actions";
 
@@ -196,9 +198,26 @@ function MatchStatusRow({ match }: { match: MatchedSummary }) {
 
       {match.status === "CANCELLING" ? (
         match.isCanceller ? (
-          <p className="text-xs text-muted-foreground">
-            你已申请取消,等待对方决定是否同意免责。
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-muted-foreground">
+              你已申请取消,等待对方决定是否同意免责。
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const res = await resumeNeedMatch(match.matchId);
+                  if (res.ok) toast.success("已撤回取消,对接继续");
+                  else toast.error(res.error);
+                })
+              }
+            >
+              <RotateCcw />
+              撤回取消
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-wrap gap-2">
             <Button

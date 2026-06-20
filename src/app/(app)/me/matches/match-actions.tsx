@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   CheckCircle2,
   Loader2,
+  RotateCcw,
   ShieldAlert,
   ShieldCheck,
   XCircle,
@@ -29,6 +30,7 @@ import {
   confirmNeedMatchComplete,
   decideNeedMatchLiability,
   requestCancelNeedMatch,
+  resumeNeedMatch,
   withdrawNeedMatch,
 } from "@/app/(app)/needs/actions";
 import { ReviewDialog } from "@/components/site/review-dialog";
@@ -211,12 +213,26 @@ export function MatchActions({
 
   // ── CANCELLING ──
   if (status === "CANCELLING") {
+    // 发起方:等待对方决定,可撤回取消(误点回退)
     if (isCanceller) {
+      function handleResume() {
+        startTransition(async () => {
+          const res = await resumeNeedMatch(matchId);
+          if (res.ok) toast.success("已撤回取消,对接继续");
+          else toast.error(res.error);
+        });
+      }
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" />
-          等待对方决定是否免责
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" />
+            等待对方决定是否免责
+          </span>
+          <Button size="sm" variant="outline" onClick={handleResume} disabled={pending}>
+            {pending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+            撤回取消
+          </Button>
+        </div>
       );
     }
 
