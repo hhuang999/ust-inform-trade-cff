@@ -27,6 +27,10 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 
+// 个人主页展示发布历史/评价/信誉,必须每次请求实时读库(与所有 /me/* 子页一致),
+// 否则发布新需求、收到新评价后会显示缓存的旧数据。
+export const dynamic = "force-dynamic";
+
 const ANIM = "animate-in fade-in slide-in-from-bottom-4 duration-500";
 
 /** Mask the student id, showing only the trailing segment. */

@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireVerifiedUser, type SessionUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { notificationHref } from "@/lib/notification-href";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { Badge } from "@/components/ui/badge";
@@ -190,6 +191,7 @@ function NotificationGroup({
               <span className="font-medium text-foreground">{n.title}</span>
             );
             const showAction = n.type.startsWith("item_confirm");
+            const href = notificationHref(n);
             return (
               <li
                 key={n.id}
@@ -212,8 +214,8 @@ function NotificationGroup({
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      {n.link ? (
-                        <Link href={n.link} className="hover:underline">
+                      {href ? (
+                        <Link href={href} className="hover:underline">
                           {titleNode}
                         </Link>
                       ) : (

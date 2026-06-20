@@ -32,6 +32,7 @@ import {
   NEED_FORMAT_PREFERENCES,
   EXPECTED_TIMES,
 } from "@/lib/constants/need";
+import { expandSearchTerms } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,8 @@ export default async function NeedsPage({
       ? (sp.formatPref as string)
       : undefined;
   const page = parsePage(sp.page);
+  // 搜索词展开(同义词 + 分词):让 "ipad" 也能命中 "平板电脑" 等。
+  const searchTerms = expandSearchTerms(search);
 
   // ── 查询条件:仅 OPEN 需求 ──
   const where = {
@@ -86,12 +89,13 @@ export default async function NeedsPage({
     ...(category ? { category } : {}),
     ...(expectedTime ? { expectedTime } : {}),
     ...(formatPref ? { formatPreference: formatPref } : {}),
-    ...(search
+    ...(searchTerms.length
       ? {
-          OR: [
-            { title: { contains: search, mode: "insensitive" as const } },
-            { description: { contains: search, mode: "insensitive" as const } },
-          ],
+          OR: searchTerms.flatMap((t) => [
+            { title: { contains: t, mode: "insensitive" as const } },
+            { description: { contains: t, mode: "insensitive" as const } },
+            { category: { contains: t, mode: "insensitive" as const } },
+          ]),
         }
       : {}),
   };

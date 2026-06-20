@@ -61,6 +61,7 @@ model User {
   reviewsReceived Review[]   @relation("ReviewReviewee")
   reportsFiled    Report[]
   violations      Violation[]
+  feedbacks       Feedback[]
 
   @@index([verificationStatus])
 }
@@ -456,6 +457,40 @@ model Report {
 
   @@index([status, createdAt])
   @@index([targetType, targetId])
+}
+
+// ───────────────────────── Feedback (用户反馈信箱) ─────────────────────────
+// 用户向开发者提交问题/建议;管理员可在 /admin/feedback 查看、回复(站内通知)。
+// 与 Report(违规举报)不同:面向开发者、不绑定具体目标、轻量。
+
+enum FeedbackCategory {
+  BUG
+  FEATURE
+  USABILITY
+  OTHER
+}
+
+enum FeedbackStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+}
+
+model Feedback {
+  id           String           @id @default(cuid())
+  userId       String
+  category     FeedbackCategory
+  content      String
+  contact      String?
+  status       FeedbackStatus   @default(PENDING)
+  reply        String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
 }
 
 // ───────────────────────── Violations (违规) ─────────────────────────

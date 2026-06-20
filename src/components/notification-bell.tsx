@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Bell } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ type NotificationItem = {
   title: string;
   body: string;
   read: boolean;
+  href?: string | null;
 };
 
 export function NotificationBell() {
@@ -55,23 +57,45 @@ export function NotificationBell() {
               暂无通知
             </p>
           ) : null}
-          {items.map((i) => (
-            <button
-              key={i.id}
-              onClick={() => markRead(i.id)}
-              className={cn(
-                "block w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted",
-                i.read
-                  ? "text-muted-foreground"
-                  : "bg-primary/5 font-medium text-foreground"
-              )}
+          {items.map((i) => {
+            const cls = cn(
+              "block w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted",
+              i.read
+                ? "text-muted-foreground"
+                : "bg-primary/5 font-medium text-foreground",
+            );
+            const inner = (
+              <>
+                {i.title}
+                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                  {i.body}
+                </span>
+              </>
+            );
+            // 有跳转目标的通知渲染为链接(点击即跳转并标记已读),否则保留为按钮。
+            return i.href ? (
+              <Link
+                key={i.id}
+                href={i.href}
+                onClick={() => markRead(i.id)}
+                className={cls}
+              >
+                {inner}
+              </Link>
+            ) : (
+              <button key={i.id} onClick={() => markRead(i.id)} className={cls}>
+                {inner}
+              </button>
+            );
+          })}
+          {items.length > 0 ? (
+            <Link
+              href="/notifications"
+              className="mt-1 block rounded-lg px-3 py-2 text-center text-xs font-medium text-primary transition-colors hover:bg-muted"
             >
-              {i.title}
-              <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                {i.body}
-              </span>
-            </button>
-          ))}
+              查看全部通知
+            </Link>
+          ) : null}
         </div>
       ) : null}
     </div>

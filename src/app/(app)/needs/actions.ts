@@ -426,6 +426,51 @@ export async function chooseProvider(matchId: string): Promise<ActionResult> {
 }
 
 /**
+ * 发布者拒绝单个应征者(match APPLIED→NOT_SELECTED),通知提供者「未选中」。
+ * 与 closeNeed 的批量拒绝不同:这里精准针对单个 match,且不关闭整个需求。
+ */
+export async function rejectApplicant(matchId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const match = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: { needId: true, providerId: true, status: true },
+  });
+  if (!match) return { ok: false, error: "应征记录不存在" };
+
+  const need = await prisma.need.findUnique({
+    where: { id: match.needId },
+    select: { requesterId: true, title: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+  if (need.requesterId !== actor.id) {
+    return { ok: false, error: "只有发布者可拒绝应征者" };
+  }
+  if (match.status !== "APPLIED") {
+    return { ok: false, error: "该应征当前不可拒绝" };
+  }
+
+  await prisma.needMatch.update({
+    where: { id: matchId },
+    data: { status: "NOT_SELECTED" },
+  });
+
+  await notify({
+    userId: match.providerId,
+    type: "need_not_selected",
+    title: "你的应征未被选中",
+    body: `「${need.title}」需求方未选择你本次的应征。`,
+    link: `/needs/${match.needId}`,
+    data: { matchId, needId: match.needId },
+  });
+
+  revalidateNeedRoutes(match.needId);
+  revalidatePath("/me/matches");
+  return { ok: true };
+}
+
+/**
  * 任一参与方确认完成(双方各确认一次)。
  * - 第一方 → 设置 firstConfirmer,通知对方;
  * - 第二方 → COMPLETED,通知双方评价。

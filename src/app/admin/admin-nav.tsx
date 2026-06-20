@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { label: "身份认证审核", href: "/admin/verify" },
   { label: "举报处理", href: "/admin/reports" },
+  { label: "用户反馈", href: "/admin/feedback" },
 ];
 
 export function AdminNav() {

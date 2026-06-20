@@ -26,6 +26,7 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 import { SERVICE_CATEGORIES, SERVICE_FORMATS } from "@/lib/constants/service";
+import { expandSearchTerms } from "@/lib/search";
 import { aggregateRatings, ratingNumber } from "@/lib/reputation";
 
 export const dynamic = "force-dynamic";
@@ -75,18 +76,21 @@ export default async function ServicesPage({
   const sort: SortValue =
     (SORT_OPTIONS.find((o) => o.value === sortRaw)?.value ?? "latest") as SortValue;
   const page = parsePage(sp.page);
+  // 搜索词展开(同义词 + 分词):让 "ipad" 也能命中 "平板电脑" 等。
+  const searchTerms = expandSearchTerms(search);
 
   // ── 查询条件:仅 ACTIVE 服务 ──
   const where = {
     status: "ACTIVE" as const,
     ...(category ? { categories: { has: category } } : {}),
     ...(format ? { formats: { has: format } } : {}),
-    ...(search
+    ...(searchTerms.length
       ? {
-          OR: [
-            { title: { contains: search, mode: "insensitive" as const } },
-            { description: { contains: search, mode: "insensitive" as const } },
-          ],
+          OR: searchTerms.flatMap((t) => [
+            { title: { contains: t, mode: "insensitive" as const } },
+            { description: { contains: t, mode: "insensitive" as const } },
+            { categories: { has: t } },
+          ]),
         }
       : {}),
   };
