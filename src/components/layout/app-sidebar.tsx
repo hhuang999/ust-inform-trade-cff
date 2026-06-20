@@ -5,13 +5,11 @@ import { usePathname } from "next/navigation";
 import {
   Bell,
   Compass,
-  Handshake,
   Heart,
   Lock,
   Package,
   Settings,
   ShieldCheck,
-  ShoppingCart,
   User,
   Wrench,
   HandHeart,
@@ -52,14 +50,14 @@ type MineDef = {
   icon: IconType;
 };
 
+// 「我的」:三类交易各一个入口(物品交易/服务预约/需求撮合),内含 tab 整合相关子功能;
+// 服务预约/需求撮合不再单列,/me/bookings、/me/matches 已重定向进对应 tab。
 const MINE_DEFS: MineDef[] = [
   { label: "我的主页", path: "/profile/{userId}", icon: User },
-  { label: "我的物品", path: "/me/items", icon: Package },
-  { label: "我的服务", path: "/me/services", icon: Wrench },
-  { label: "我的需求", path: "/me/needs", icon: HandHeart },
+  { label: "物品交易", path: "/me/items", icon: Package },
+  { label: "服务预约", path: "/me/services", icon: Wrench },
+  { label: "需求撮合", path: "/me/needs", icon: HandHeart },
   { label: "我的收藏", path: "/me/favorites", icon: Heart },
-  { label: "服务预约", path: "/me/bookings", icon: ShoppingCart },
-  { label: "需求撮合", path: "/me/matches", icon: Handshake },
   { label: "通知", path: "/notifications", icon: Bell },
   { label: "设置", path: "/settings", icon: Settings },
 ];

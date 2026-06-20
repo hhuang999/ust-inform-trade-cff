@@ -174,7 +174,7 @@ export default async function MyItemsPage({
   return (
     <PageContainer className="space-y-6">
       <SectionHeading
-        title="我的交易"
+        title="物品交易"
         description="管理你发布的物品、关注的意向与进行中的交易"
       />
 

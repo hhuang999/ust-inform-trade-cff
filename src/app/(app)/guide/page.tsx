@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
 
+import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,7 +17,10 @@ import {
 
 const ANIM = "animate-in fade-in slide-in-from-bottom-4 duration-500";
 
-export default function GuideHubPage() {
+export default async function GuideHubPage() {
+  // 指南对所有人开放;但底部「加入社区」邀请只对未登录用户展示,避免对已注册用户造成歧义。
+  const session = await auth();
+  const isAuthed = Boolean(session?.user);
   const featured = FEATURED_GUIDE_SECTION;
   const FeaturedIcon = featured.icon;
   // 其余章节(去掉置顶的「新手入门」)做功能导览卡片。
@@ -140,19 +144,34 @@ export default function GuideHubPage() {
           </div>
         </div>
 
-        {/* ── 结尾邀请 ── */}
+        {/* ── 结尾邀请(仅未登录展示注册/登录引导;已登录改为常用入口) ── */}
         <div className="rounded-2xl border border-outline-variant/40 bg-card/50 px-6 py-8 text-center">
           <p className="font-serif text-lg font-semibold">准备好了吗？</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            浏览全部内容无需登录；登录后即可发布、交易、收藏，参与校园互助。
+            {isAuthed
+              ? "去逛逛校园里的物品、服务与需求，或发布你的第一份内容。"
+              : "浏览全部内容无需登录；注册并登录后即可发布、交易、收藏，参与校园互助。"}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <Button asChild>
-              <Link href="/register">加入社区</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/login">登录</Link>
-            </Button>
+            {isAuthed ? (
+              <>
+                <Button asChild>
+                  <Link href="/items">浏览物品</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href={`/profile/${session!.user.id}`}>我的主页</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild>
+                  <Link href="/register">注册并登录</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/login">登录</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </PageContainer>
