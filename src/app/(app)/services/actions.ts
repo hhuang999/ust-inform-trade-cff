@@ -678,12 +678,12 @@ export async function confirmBookingComplete(
 
   const otherId = actor.id === booking.clientId ? service.providerId : booking.clientId;
 
-  // 第一方确认。
-  if (!booking.firstConfirmerId) {
-    await prisma.booking.update({
-      where: { id: bookingId },
-      data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
-    });
+  // 原子抢"第一确认人":仅当仍为 CONFIRMED 且 firstConfirmerId 为 null 时成功(防并发双首确认竞态)。
+  const claimed = await prisma.booking.updateMany({
+    where: { id: bookingId, status: "CONFIRMED", firstConfirmerId: null },
+    data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
+  });
+  if (claimed.count > 0) {
     await notify({
       userId: otherId,
       type: "service_confirm_request",
@@ -697,9 +697,20 @@ export async function confirmBookingComplete(
     return { ok: true, completed: false };
   }
 
-  // 同一人重复确认。
-  if (booking.firstConfirmerId === actor.id) {
+  // 未抢到 → 重读判定:我已确认 / 我是第二方 / 状态已变。
+  const fresh = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { status: true, firstConfirmerId: true },
+  });
+  if (!fresh) return { ok: false, error: "预约不存在" };
+  if (fresh.status !== "CONFIRMED") {
+    return { ok: false, error: "该预约当前不可确认完成" };
+  }
+  if (fresh.firstConfirmerId === actor.id) {
     return { ok: false, error: "你已确认,请等待对方确认" };
+  }
+  if (!fresh.firstConfirmerId) {
+    return { ok: false, error: "请稍后重试" };
   }
 
   // 第二方确认 → 完成。

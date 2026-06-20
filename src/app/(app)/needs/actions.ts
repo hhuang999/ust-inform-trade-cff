@@ -383,6 +383,20 @@ export async function chooseProvider(matchId: string): Promise<ActionResult> {
   if (need.requesterId !== actor.id) return { ok: false, error: "只有发布者可选定提供者" };
   if (match.status !== "APPLIED") return { ok: false, error: "该应征当前不可选定" };
 
+  // 撮合为 1:1:同一需求已有进行中撮合(MATCHED/CANCELLING)时拒绝再次选定,
+  // 防止发布者并发选定多名提供者,破坏双方确认完成/违规归责语义。
+  const existingActive = await prisma.needMatch.findFirst({
+    where: {
+      needId: match.needId,
+      status: { in: ["MATCHED", "CANCELLING"] },
+      NOT: { id: matchId },
+    },
+    select: { id: true },
+  });
+  if (existingActive) {
+    return { ok: false, error: "已选定一位提供者,请先结束当前对接再更换" };
+  }
+
   await prisma.needMatch.update({
     where: { id: matchId },
     // 写 matchedAt:cron「双方均未确认 7 天自动完成」分支以 matchedAt 为锚点,
@@ -505,12 +519,12 @@ export async function confirmNeedMatchComplete(
 
   const otherId = actor.id === match.providerId ? need.requesterId : match.providerId;
 
-  // 第一方确认。
-  if (!match.firstConfirmerId) {
-    await prisma.needMatch.update({
-      where: { id: matchId },
-      data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
-    });
+  // 原子抢"第一确认人":仅当仍为 MATCHED 且 firstConfirmerId 为 null 时成功(防并发双首确认竞态)。
+  const claimed = await prisma.needMatch.updateMany({
+    where: { id: matchId, status: "MATCHED", firstConfirmerId: null },
+    data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
+  });
+  if (claimed.count > 0) {
     await notify({
       userId: otherId,
       type: "need_confirm_request",
@@ -524,9 +538,20 @@ export async function confirmNeedMatchComplete(
     return { ok: true, completed: false };
   }
 
-  // 同一人重复确认。
-  if (match.firstConfirmerId === actor.id) {
+  // 未抢到 → 重读判定:我已确认 / 我是第二方 / 状态已变。
+  const fresh = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: { status: true, firstConfirmerId: true },
+  });
+  if (!fresh) return { ok: false, error: "应征记录不存在" };
+  if (fresh.status !== "MATCHED") {
+    return { ok: false, error: "该应征当前不可确认完成" };
+  }
+  if (fresh.firstConfirmerId === actor.id) {
     return { ok: false, error: "你已确认,请等待对方确认" };
+  }
+  if (!fresh.firstConfirmerId) {
+    return { ok: false, error: "请稍后重试" };
   }
 
   // 第二方确认 → 完成。

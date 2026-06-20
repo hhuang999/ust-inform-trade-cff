@@ -279,19 +279,28 @@ export async function expressInterest(
     return { ok: false, error: "不能对自己的物品表达意向" };
   }
 
+  // 仅首次表达意向时通知卖家;重复提交(改留言)不再刷"新意向人"通知,
+  // 对齐 needs/actions 的 isNew 守卫,避免反复点按给卖家刷屏。
+  const existing = await prisma.itemInterest.findUnique({
+    where: { itemId_userId: { itemId, userId: actor.id } },
+    select: { id: true },
+  });
+
   await prisma.itemInterest.upsert({
     where: { itemId_userId: { itemId, userId: actor.id } },
     create: { itemId, userId: actor.id, message: message ?? null },
     update: { message: message ?? null },
   });
 
-  await notify({
-    userId: item.sellerId,
-    type: "item_interest",
-    title: "你的物品有新意向人",
-    body: `「${item.title}」收到一条新的购买意向`,
-    link: `/items/${itemId}`,
-  });
+  if (!existing) {
+    await notify({
+      userId: item.sellerId,
+      type: "item_interest",
+      title: "你的物品有新意向人",
+      body: `「${item.title}」收到一条新的购买意向`,
+      link: `/items/${itemId}`,
+    });
+  }
 
   revalidateItemRoutes(itemId);
   return { ok: true };
@@ -318,6 +327,15 @@ export async function chooseBuyer(
   }
   if (buyerUserId === actor.id) {
     return { ok: false, error: "不能选定自己为买家" };
+  }
+
+  // 校验该用户确实表达过意向,防止对任意 userId 调用并给无关用户发"被选定"通知。
+  const interest = await prisma.itemInterest.findUnique({
+    where: { itemId_userId: { itemId, userId: buyerUserId } },
+    select: { id: true },
+  });
+  if (!interest) {
+    return { ok: false, error: "该用户未对你的物品表达意向" };
   }
 
   const deal = await prisma.$transaction(async (tx) => {
@@ -421,13 +439,16 @@ export async function confirmItemComplete(
     return { ok: false, error: "该交易当前不可确认" };
   }
 
-  // 第一方确认。
-  if (!deal.firstConfirmerId) {
-    await prisma.itemDeal.update({
-      where: { id: dealId },
-      data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
-    });
-    const otherId = actor.id === deal.sellerId ? deal.buyerId : deal.sellerId;
+  const otherId = actor.id === deal.sellerId ? deal.buyerId : deal.sellerId;
+
+  // 原子抢"第一确认人":仅当仍为 PENDING 且 firstConfirmerId 为 null 时成功。
+  // 防止买卖双方几乎同时点确认时,两请求都读到 null 而双双走第一方分支,
+  // 导致交易永久卡 PENDING(只能等 7 天 cron 兜底)。
+  const claimed = await prisma.itemDeal.updateMany({
+    where: { id: dealId, status: "PENDING", firstConfirmerId: null },
+    data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
+  });
+  if (claimed.count > 0) {
     await notify({
       userId: otherId,
       type: "item_confirm_request",
@@ -440,22 +461,30 @@ export async function confirmItemComplete(
     return { ok: true, completed: false };
   }
 
-  // 同一人重复确认。
-  if (deal.firstConfirmerId === actor.id) {
+  // 未抢到 → 重读判定:我已确认 / 我是第二方 / 状态已变。
+  const fresh = await prisma.itemDeal.findUnique({
+    where: { id: dealId },
+    select: { status: true, firstConfirmerId: true, itemId: true },
+  });
+  if (!fresh) return { ok: false, error: "交易不存在" };
+  if (fresh.status !== "PENDING") {
+    return { ok: false, error: "该交易当前不可确认" };
+  }
+  if (fresh.firstConfirmerId === actor.id) {
     return { ok: false, error: "你已确认,请等待对方确认" };
   }
+  if (!fresh.firstConfirmerId) {
+    return { ok: false, error: "请稍后重试" };
+  }
 
-  // 第二方确认 -> 完成。(事务超时已在 db.ts 全局放宽,适配 Neon 延迟。)
+  // 第二方确认 → 完成。(事务超时已在 db.ts 全局放宽,适配 Neon 延迟。)
   await prisma.$transaction([
     prisma.itemDeal.update({
       where: { id: dealId },
-      data: {
-        status: "COMPLETED",
-        completedAt: new Date(),
-      },
+      data: { status: "COMPLETED", completedAt: new Date() },
     }),
     prisma.item.update({
-      where: { id: deal.itemId },
+      where: { id: fresh.itemId },
       data: { status: "SOLD" },
     }),
   ]);
