@@ -2,9 +2,11 @@ import Link from "next/link";
 import {
   ArrowRight,
   HandHeart,
+  LayoutGrid,
   PackageOpen,
   ShieldCheck,
   Sparkles,
+  Users,
 } from "lucide-react";
 
 import { auth } from "@/lib/auth";
@@ -76,15 +78,12 @@ export default async function Home() {
   // 首页统计与最新物品/服务/需求:廉价 count / limit 查询。
   // 用 allSettled 让每个查询独立结算 —— 远端 DB(Neon)冷启动/高延迟时单个查询
   // 可能超时,失败的那个降级为空,其余照常渲染,首页永不因 DB 抖动而 500。
-  // 统计口径:注册用户(全部)、累计发布(物品+服务+需求全量)、成功成交(三类 COMPLETED 之和)。
+  // 统计口径:注册用户(全部)、累计发布(物品+服务+需求全量)。
   const discovery = await Promise.allSettled([
     prisma.user.count({ where: { deletedAt: null } }),
     prisma.item.count({ where: { deletedAt: null } }),
     prisma.service.count({ where: { deletedAt: null } }),
     prisma.need.count({ where: { deletedAt: null } }),
-    prisma.itemDeal.count({ where: { status: "COMPLETED" } }),
-    prisma.booking.count({ where: { status: "COMPLETED" } }),
-    prisma.needMatch.count({ where: { status: "COMPLETED" } }),
     prisma.item.findMany({
       where: { status: "AVAILABLE", deletedAt: null },
       orderBy: { createdAt: "desc" },
@@ -112,16 +111,13 @@ export default async function Home() {
   const registeredUsers = ok(discovery[0], 0);
   const totalPublished =
     ok(discovery[1], 0) + ok(discovery[2], 0) + ok(discovery[3], 0);
-  const completedDeals =
-    ok(discovery[4], 0) + ok(discovery[5], 0) + ok(discovery[6], 0);
-  const latestItems = ok(discovery[7], []);
-  const latestServices = ok(discovery[8], []);
-  const latestNeeds = ok(discovery[9], []);
+  const latestItems = ok(discovery[4], []);
+  const latestServices = ok(discovery[5], []);
+  const latestNeeds = ok(discovery[6], []);
 
   const stats = [
-    { label: "注册用户", value: registeredUsers },
-    { label: "累计发布", value: totalPublished },
-    { label: "成功成交", value: completedDeals },
+    { icon: Users, label: "注册用户", value: registeredUsers },
+    { icon: LayoutGrid, label: "累计发布", value: totalPublished },
   ];
 
   return (
@@ -133,19 +129,17 @@ export default async function Home() {
           <PageContainer className="flex flex-col items-center gap-6 py-20 text-center md:py-28">
             <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant/50 bg-card/70 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
               <span className="size-1.5 rounded-full bg-primary" />
-              港科大（广州）校园社区
+              港科大（广州）· 校园互助市场
             </span>
 
-            <h1 className="font-serif text-4xl font-bold tracking-tight md:text-5xl">
+            <h1 className="font-serif text-4xl font-bold tracking-tight md:text-6xl">
               {nickname ? `欢迎回来，${nickname}` : "校园枢纽"}
             </h1>
-            <p className="text-sm font-medium uppercase tracking-widest text-primary/80">
-              港科大（广州）
-            </p>
 
             <p className="max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
-              校园二手物品与咨询服务撮合平台。
-              连接同学，让闲置流转，让技能变现。
+              二手物品、生活服务、互助需求，一站撮合。
+              <br className="hidden sm:block" />
+              让闲置流转，让技能变现，让校园里的每一次连接都安心可靠。
             </p>
 
             <div className="mt-2 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:justify-center">
@@ -170,22 +164,28 @@ export default async function Home() {
 
         {/* ── Stats strip ── */}
         <PageContainer className="py-6">
-          <div
-            className={`grid grid-cols-3 gap-3 md:gap-4 ${ANIM}`}
-          >
-            {stats.map((s) => (
-              <div
-                key={s.label}
-                className="rounded-xl border border-outline-variant/40 bg-card px-4 py-5 text-center shadow-card"
-              >
-                <div className="font-serif text-2xl font-bold tabular-nums text-primary md:text-3xl">
-                  {s.value}
+          <div className={`mx-auto grid max-w-xl grid-cols-2 gap-3 md:gap-4 ${ANIM}`}>
+            {stats.map((s) => {
+              const Icon = s.icon;
+              return (
+                <div
+                  key={s.label}
+                  className="flex items-center gap-3 rounded-xl border border-outline-variant/40 bg-card px-5 py-4 shadow-card"
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-serif text-2xl font-bold tabular-nums text-foreground md:text-3xl">
+                      {s.value.toLocaleString("zh-CN")}
+                    </div>
+                    <div className="text-xs text-muted-foreground md:text-sm">
+                      {s.label}
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground md:text-sm">
-                  {s.label}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </PageContainer>
 
