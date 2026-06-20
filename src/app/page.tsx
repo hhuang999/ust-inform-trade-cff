@@ -1,8 +1,14 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Bike,
+  BookOpen,
+  GraduationCap,
   HandHeart,
+  Laptop,
   LayoutGrid,
+  Lightbulb,
+  Music,
   Package,
   Search,
   ShieldCheck,
@@ -56,6 +62,46 @@ const FEATURES = [
 ] as const;
 
 const ANIM = "animate-in fade-in slide-in-from-bottom-4 duration-500";
+
+/** 使用场景:帮用户对号入座,每张链到对应产品线。 */
+const SCENARIOS = [
+  {
+    icon: BookOpen,
+    title: "课本教材",
+    desc: "学长学姐的旧书、笔记与复习资料。",
+    href: "/items",
+  },
+  {
+    icon: Laptop,
+    title: "数码外设",
+    desc: "二手平板、配件、外设好物流转。",
+    href: "/items",
+  },
+  {
+    icon: GraduationCap,
+    title: "学业辅导",
+    desc: "课程答疑、论文润色、考试冲刺。",
+    href: "/services",
+  },
+  {
+    icon: Music,
+    title: "技能教学",
+    desc: "乐器、绘画、编程、摄影入门。",
+    href: "/services",
+  },
+  {
+    icon: Bike,
+    title: "跑腿代取",
+    desc: "代取、跑腿、拼车、代购互助。",
+    href: "/needs",
+  },
+  {
+    icon: Lightbulb,
+    title: "发布需求",
+    desc: "找不到？发个需求，等同学来找你。",
+    href: "/needs",
+  },
+] as const;
 
 export default async function Home() {
   const session = await auth();
@@ -274,6 +320,36 @@ export default async function Home() {
                     去逛逛
                     <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                   </span>
+                </Link>
+              );
+            })}
+          </div>
+        </PageContainer>
+
+        {/* ── 你可以在这里:使用场景卡 ── */}
+        <PageContainer className="space-y-5 py-10">
+          <SectionHeading
+            title="你可以在这里"
+            description="校园生活的每一种连接"
+          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {SCENARIOS.map((s) => {
+              const Icon = s.icon;
+              return (
+                <Link
+                  key={s.title}
+                  href={s.href}
+                  className="group flex items-start gap-3 rounded-xl border border-outline-variant/40 bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card"
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-medium tracking-tight">{s.title}</div>
+                    <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                      {s.desc}
+                    </p>
+                  </div>
                 </Link>
               );
             })}
