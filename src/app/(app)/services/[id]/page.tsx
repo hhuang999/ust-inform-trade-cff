@@ -143,6 +143,19 @@ export default async function ServiceDetailPage({
       slotEnd: b.slotEnd.toISOString(),
     }));
 
+  // 当前用户(客户)已提交、待确认的预约(预约后回显,避免误以为没约上)。
+  const myPendingBookings: PendingBooking[] = service.bookings
+    .filter((b) => b.status === "PENDING" && b.client.id === viewerId)
+    .map((b) => ({
+      id: b.id,
+      clientId: b.client.id,
+      clientNickname: b.client.nickname,
+      note: b.note,
+      slotId: b.slotId,
+      slotStart: b.slotStart.toISOString(),
+      slotEnd: b.slotEnd.toISOString(),
+    }));
+
   // 时段摘要(传给客户端;注意 ISO 字符串可序列化)。
   const allSlots: SlotSummary[] = service.slots.map((s) => ({
     id: s.id,
@@ -404,6 +417,8 @@ export default async function ServiceDetailPage({
             activeBookings={activeBookings}
             slots={allSlots}
             availableSlots={availableSlots}
+            myPendingBookings={myPendingBookings}
+            providerId={service.providerId}
           />
 
           {/* 安全提示 */}

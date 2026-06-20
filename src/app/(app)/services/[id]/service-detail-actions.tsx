@@ -105,6 +105,10 @@ export interface ServiceDetailActionsProps {
   activeBookings: ActiveBooking[];
   slots: SlotSummary[];
   availableSlots: SlotSummary[];
+  /** 当前用户(客户)已提交、待确认的预约(预约后回显)。 */
+  myPendingBookings: PendingBooking[];
+  /** 服务提供者 id(无时段时提供"查看卖家主页"出口)。 */
+  providerId: string;
 }
 
 // formatLocal 统一来自 @/lib/time(formatDateTime),显式 Asia/Shanghai。
@@ -670,11 +674,15 @@ function ClientActions({
   contact,
   availableSlots,
   status,
+  myPendingBookings,
+  providerId,
 }: {
   serviceId: string;
   contact: string | null;
   availableSlots: SlotSummary[];
   status: "ACTIVE" | "PAUSED" | "CLOSED";
+  myPendingBookings: PendingBooking[];
+  providerId: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = React.useState(false);
@@ -721,6 +729,21 @@ function ClientActions({
   return (
     <Card>
       <CardContent className="space-y-4">
+        {myPendingBookings.length > 0 ? (
+          <div className="space-y-2">
+            {myPendingBookings.map((b) => (
+              <div
+                key={b.id}
+                className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs"
+              >
+                <p className="font-medium text-foreground">你已预约 · 待卖家确认</p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {formatLocal(b.slotStart)} – {formatLocal(b.slotEnd)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">选择可预约时段</p>
@@ -735,9 +758,12 @@ function ClientActions({
               该服务当前状态为{status === "PAUSED" ? "已暂停" : "已关闭"},暂不接受预约。
             </p>
           ) : availableSlots.length === 0 ? (
-            <p className="rounded-md bg-accent/60 px-3 py-2 text-xs text-muted-foreground">
-              暂无可预约时段
-            </p>
+            <div className="space-y-2 rounded-md bg-accent/60 px-3 py-2 text-xs text-muted-foreground">
+              <p>暂无可预约时段,可联系卖家或查看其主页。</p>
+              <Button asChild variant="outline" size="sm" className="h-7">
+                <Link href={`/profile/${providerId}`}>查看卖家主页</Link>
+              </Button>
+            </div>
           ) : (
             <ul className="space-y-1.5">
               {availableSlots.map((s) => (
@@ -857,6 +883,8 @@ export function ServiceDetailActions({
   activeBookings,
   slots,
   availableSlots,
+  myPendingBookings,
+  providerId,
 }: ServiceDetailActionsProps) {
   if (isProvider) {
     return (
@@ -877,6 +905,8 @@ export function ServiceDetailActions({
         contact={contact}
         availableSlots={availableSlots}
         status={status}
+        myPendingBookings={myPendingBookings}
+        providerId={providerId}
       />
     );
   }
