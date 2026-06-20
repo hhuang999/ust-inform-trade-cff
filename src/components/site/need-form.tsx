@@ -75,6 +75,8 @@ interface NeedFormProps {
   mode: "create" | "edit";
   needId?: string;
   initial?: NeedFormInitial;
+  /** 当前用户 id:create 模式下用于按用户隔离草稿,避免共享设备跨账号泄露。 */
+  userId?: string;
 }
 
 interface FormValues {
@@ -91,9 +93,11 @@ interface FormValues {
 
 // ───────────────────────── 组件 ─────────────────────────
 
-export default function NeedForm({ mode, needId, initial }: NeedFormProps) {
+export default function NeedForm({ mode, needId, initial, userId }: NeedFormProps) {
   const router = useRouter();
   const isEdit = mode === "edit";
+  // 草稿按用户隔离:共享设备切换账号时不会读到他人草稿。
+  const draftKey = userId ? `${DRAFT_KEY}:${userId}` : DRAFT_KEY;
 
   // 草稿恢复提示
   const [draftOpen, setDraftOpen] = React.useState(false);
@@ -138,7 +142,7 @@ export default function NeedForm({ mode, needId, initial }: NeedFormProps) {
     watch,
     reset,
     setError,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: resolver as never,
     defaultValues,
@@ -153,7 +157,7 @@ export default function NeedForm({ mode, needId, initial }: NeedFormProps) {
   React.useEffect(() => {
     if (isEdit) return;
     try {
-      const raw = window.localStorage.getItem(DRAFT_KEY);
+      const raw = window.localStorage.getItem(draftKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as { values: Partial<FormValues> };
       if (parsed?.values && Object.keys(parsed.values).length > 0) {
@@ -182,7 +186,7 @@ export default function NeedForm({ mode, needId, initial }: NeedFormProps) {
 
   function clearDraft() {
     try {
-      window.localStorage.removeItem(DRAFT_KEY);
+      window.localStorage.removeItem(draftKey);
     } catch {
       /* ignore */
     }
@@ -192,10 +196,12 @@ export default function NeedForm({ mode, needId, initial }: NeedFormProps) {
   React.useEffect(() => {
     if (isEdit) return;
     const subscription = watch((value) => {
+      // 仅在表单真正变脏后才写草稿,避免一进页面就以默认值写入、下次进入误弹"恢复"。
+      if (!isDirty) return;
       const t = setTimeout(() => {
         try {
           window.localStorage.setItem(
-            DRAFT_KEY,
+            draftKey,
             JSON.stringify({ values: value })
           );
         } catch {
@@ -205,7 +211,7 @@ export default function NeedForm({ mode, needId, initial }: NeedFormProps) {
       return () => clearTimeout(t);
     });
     return () => subscription.unsubscribe();
-  }, [watch, isEdit]);
+  }, [watch, isEdit, isDirty, draftKey]);
 
   // ── 提交 ──
   const onSubmit = handleSubmit(async (values) => {
