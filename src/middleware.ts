@@ -9,7 +9,9 @@ export default auth((req) => {
   const isLoggedIn = !!user;
   const isAdmin = user?.role === "ADMIN";
 
-  const isProtectedUser = path.startsWith("/settings") || path.startsWith("/profile");
+  // /profile 对所有人公开(含未登录访客):个人主页是公开名片,供从物品/服务卡片点入查看。
+  // 仅 /settings 仍需登录。敏感字段(联系方式)由 contactVisibility 自行门控。
+  const isProtectedUser = path.startsWith("/settings");
   const isAdminArea = path.startsWith("/admin");
 
   if (isAdminArea && !isAdmin) {
