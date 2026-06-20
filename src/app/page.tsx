@@ -6,14 +6,12 @@ import {
   GraduationCap,
   HandHeart,
   Laptop,
-  LayoutGrid,
   Lightbulb,
   Music,
   Package,
   Search,
   ShieldCheck,
   Sparkles,
-  Users,
   Wrench,
 } from "lucide-react";
 
@@ -124,12 +122,10 @@ export default async function Home() {
     nickname = me?.nickname ?? null;
   }
 
-  // 首页统计与最新物品/服务/需求:廉价 count / limit 查询。
+  // 最新物品/服务/需求 + 各产品线发布数:廉价 count / limit 查询。
   // 用 allSettled 让每个查询独立结算 —— 远端 DB(Neon)冷启动/高延迟时单个查询
   // 可能超时,失败的那个降级为空,其余照常渲染,首页永不因 DB 抖动而 500。
-  // 统计口径:注册用户(全部)、累计发布(物品+服务+需求全量)。
   const discovery = await Promise.allSettled([
-    prisma.user.count({ where: { deletedAt: null } }),
     prisma.item.count({ where: { deletedAt: null } }),
     prisma.service.count({ where: { deletedAt: null } }),
     prisma.need.count({ where: { deletedAt: null } }),
@@ -157,19 +153,12 @@ export default async function Home() {
   ]);
   const ok = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
     r.status === "fulfilled" ? r.value : fallback;
-  const registeredUsers = ok(discovery[0], 0);
-  const itemCount = ok(discovery[1], 0);
-  const serviceCount = ok(discovery[2], 0);
-  const needCount = ok(discovery[3], 0);
-  const totalPublished = itemCount + serviceCount + needCount;
-  const latestItems = ok(discovery[4], []);
-  const latestServices = ok(discovery[5], []);
-  const latestNeeds = ok(discovery[6], []);
-
-  const stats = [
-    { icon: Users, label: "注册用户", value: registeredUsers },
-    { icon: LayoutGrid, label: "累计发布", value: totalPublished },
-  ];
+  const itemCount = ok(discovery[0], 0);
+  const serviceCount = ok(discovery[1], 0);
+  const needCount = ok(discovery[2], 0);
+  const latestItems = ok(discovery[3], []);
+  const latestServices = ok(discovery[4], []);
+  const latestNeeds = ok(discovery[5], []);
 
   const productLines = [
     {
@@ -255,37 +244,6 @@ export default async function Home() {
             </div>
           </PageContainer>
         </section>
-
-        {/* ── Stats:一张宽卡,两大数字竖线分隔,撑起分量 ── */}
-        <PageContainer className="py-8">
-          <div
-            className={`mx-auto grid max-w-2xl grid-cols-2 overflow-hidden rounded-2xl border border-outline-variant/40 bg-card shadow-card ${ANIM}`}
-          >
-            {stats.map((s, i) => {
-              const Icon = s.icon;
-              return (
-                <div
-                  key={s.label}
-                  className={`flex items-center justify-center gap-3 px-4 py-6 md:gap-4 md:px-8 md:py-7 ${
-                    i > 0 ? "border-l border-outline-variant/40" : ""
-                  }`}
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:size-12">
-                    <Icon className="size-5 md:size-6" />
-                  </span>
-                  <div className="min-w-0 text-left">
-                    <div className="font-serif text-3xl font-bold leading-none tabular-nums text-foreground md:text-4xl">
-                      {fmt(s.value)}
-                    </div>
-                    <div className="mt-1.5 text-xs text-muted-foreground md:text-sm">
-                      {s.label}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </PageContainer>
 
         {/* ── 三条产品线:平台特色的入口 ── */}
         <PageContainer className="space-y-5 py-10">
