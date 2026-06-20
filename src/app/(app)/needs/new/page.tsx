@@ -61,7 +61,7 @@ export default async function NewNeedPage() {
     <PageContainer className="max-w-3xl">
       <div className="space-y-6">
         <SectionHeading title="发布需求" description="填写信息,让能帮你的同学找到你" />
-        <NeedForm mode="create" />
+        <NeedForm mode="create" userId={user?.id} />
       </div>
     </PageContainer>
   );

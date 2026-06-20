@@ -138,7 +138,7 @@ export default async function MyNeedsPage({
         : null
     ).id;
   } catch {
-    redirect("/login");
+    redirect("/login?callbackUrl=/me/needs");
   }
 
   const sp = await searchParams;

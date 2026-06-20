@@ -61,7 +61,7 @@ export default async function NewItemPage() {
     <PageContainer className="max-w-3xl">
       <div className="space-y-6">
         <SectionHeading title="发布物品" description="填写信息,让买家找到你" />
-        <ItemForm mode="create" />
+        <ItemForm mode="create" userId={user?.id} />
       </div>
     </PageContainer>
   );

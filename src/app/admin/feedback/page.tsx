@@ -15,6 +15,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { feedbackCategoryLabel } from "@/lib/constants/feedback";
+import { formatDateTime } from "@/lib/time";
 import { ResolveActions } from "./resolve-actions";
 
 export const dynamic = "force-dynamic";
@@ -104,12 +105,4 @@ export default async function AdminFeedbackPage() {
   );
 }
 
-/** 确定性日期格式(避免 SSR 区域不一致)。 */
-function formatDateTime(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
-}
+// formatDateTime 统一来自 @/lib/time,显式 Asia/Shanghai。

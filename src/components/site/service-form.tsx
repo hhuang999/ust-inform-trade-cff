@@ -93,6 +93,8 @@ interface ServiceFormProps {
   mode: "create" | "edit";
   serviceId?: string;
   initial?: ServiceFormInitial;
+  /** 当前用户 id:create 模式下用于按用户隔离草稿,避免共享设备跨账号泄露。 */
+  userId?: string;
 }
 
 interface FormValues {
@@ -120,9 +122,12 @@ export default function ServiceForm({
   mode,
   serviceId,
   initial,
+  userId,
 }: ServiceFormProps) {
   const router = useRouter();
   const isEdit = mode === "edit";
+  // 草稿按用户隔离:共享设备切换账号时不会读到他人草稿。
+  const draftKey = userId ? `${DRAFT_KEY}:${userId}` : DRAFT_KEY;
 
   // 资质图片状态独立于 RHF,便于逐张管理上传进度。
   const [images, setImages] = React.useState<ImageEntry[]>(() => {
@@ -181,7 +186,7 @@ export default function ServiceForm({
     watch,
     reset,
     setError,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<FormValues>({
     resolver: resolver as never,
     defaultValues,
@@ -198,7 +203,7 @@ export default function ServiceForm({
   React.useEffect(() => {
     if (isEdit) return;
     try {
-      const raw = window.localStorage.getItem(DRAFT_KEY);
+      const raw = window.localStorage.getItem(draftKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as {
         values: Partial<FormValues>;
@@ -237,7 +242,7 @@ export default function ServiceForm({
 
   function clearDraft() {
     try {
-      window.localStorage.removeItem(DRAFT_KEY);
+      window.localStorage.removeItem(draftKey);
     } catch {
       /* ignore */
     }
@@ -247,12 +252,14 @@ export default function ServiceForm({
   React.useEffect(() => {
     if (isEdit) return;
     const subscription = watch((value) => {
+      // 仅在表单真正变脏后才写草稿,避免一进页面就以默认值写入、下次进入误弹"恢复"。
+      if (!isDirty) return;
       const t = setTimeout(() => {
         try {
           const snapshot = {
             values: { ...value, proofImageKeys: images.map((i) => i.key) },
           };
-          window.localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshot));
+          window.localStorage.setItem(draftKey, JSON.stringify(snapshot));
         } catch {
           /* localStorage 不可用时静默 */
         }
@@ -260,7 +267,7 @@ export default function ServiceForm({
       return () => clearTimeout(t);
     });
     return () => subscription.unsubscribe();
-  }, [watch, images, isEdit]);
+  }, [watch, images, isEdit, isDirty, draftKey]);
 
   // ── 资质图片上传 ──
   function validateImage(file: File): boolean {

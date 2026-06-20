@@ -13,6 +13,7 @@ import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui
 import { Flag, Clock, ExternalLink } from "lucide-react";
 
 import { REPORT_REASONS } from "@/lib/constants/report";
+import { formatDateTime } from "@/lib/time";
 import { ResolveActions } from "./resolve-actions";
 
 const TARGET_TYPE_LABEL: Record<ReportTargetType, string> = {
@@ -216,10 +217,7 @@ export default async function AdminReportsPage() {
                         </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="size-3.5" />
-                          {new Date(r.createdAt).toLocaleString("zh-CN", {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })}
+                          {formatDateTime(r.createdAt)}
                         </div>
                       </div>
 
@@ -292,10 +290,7 @@ export default async function AdminReportsPage() {
                               </>
                             )}
                             <span className="text-muted-foreground/50"> · </span>
-                            {new Date(r.resolvedAt ?? r.createdAt).toLocaleString("zh-CN", {
-                              dateStyle: "short",
-                              timeStyle: "short",
-                            })}
+                            {formatDateTime(r.resolvedAt ?? r.createdAt)}
                           </div>
                         </div>
                       </CardContent>

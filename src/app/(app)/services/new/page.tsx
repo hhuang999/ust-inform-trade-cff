@@ -61,7 +61,7 @@ export default async function NewServicePage() {
     <PageContainer className="max-w-3xl">
       <div className="space-y-6">
         <SectionHeading title="发布服务" description="填写信息,让有需要的同学找到你" />
-        <ServiceForm mode="create" />
+        <ServiceForm mode="create" userId={user?.id} />
       </div>
     </PageContainer>
   );

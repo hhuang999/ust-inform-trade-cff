@@ -10,6 +10,7 @@ import {
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { formatDateTime as formatLocal } from "@/lib/time";
 import { resolveContactInfo } from "@/lib/verification/contact-visibility";
 import { PageContainer } from "@/components/layout/page-container";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,19 +44,7 @@ function publicUrl(imageKey?: string | null): string | null {
   return `${base.replace(/\/$/, "")}/${imageKey}`;
 }
 
-/** 时区无关的本地化时间(仅展示用)。 */
-function formatLocal(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("zh-CN", {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
+// formatLocal 统一来自 @/lib/time(formatDateTime),显式 Asia/Shanghai。
 
 export default async function ServiceDetailPage({
   params,
@@ -150,6 +139,19 @@ export default async function ServiceDetailPage({
         !!b.firstConfirmerId && b.firstConfirmerId === viewerId,
       isCanceller:
         !!b.cancelledById && b.cancelledById === viewerId,
+      slotStart: b.slotStart.toISOString(),
+      slotEnd: b.slotEnd.toISOString(),
+    }));
+
+  // 当前用户(客户)已提交、待确认的预约(预约后回显,避免误以为没约上)。
+  const myPendingBookings: PendingBooking[] = service.bookings
+    .filter((b) => b.status === "PENDING" && b.client.id === viewerId)
+    .map((b) => ({
+      id: b.id,
+      clientId: b.client.id,
+      clientNickname: b.client.nickname,
+      note: b.note,
+      slotId: b.slotId,
       slotStart: b.slotStart.toISOString(),
       slotEnd: b.slotEnd.toISOString(),
     }));
@@ -415,6 +417,8 @@ export default async function ServiceDetailPage({
             activeBookings={activeBookings}
             slots={allSlots}
             availableSlots={availableSlots}
+            myPendingBookings={myPendingBookings}
+            providerId={service.providerId}
           />
 
           {/* 安全提示 */}

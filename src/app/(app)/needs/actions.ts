@@ -383,6 +383,20 @@ export async function chooseProvider(matchId: string): Promise<ActionResult> {
   if (need.requesterId !== actor.id) return { ok: false, error: "只有发布者可选定提供者" };
   if (match.status !== "APPLIED") return { ok: false, error: "该应征当前不可选定" };
 
+  // 撮合为 1:1:同一需求已有进行中撮合(MATCHED/CANCELLING)时拒绝再次选定,
+  // 防止发布者并发选定多名提供者,破坏双方确认完成/违规归责语义。
+  const existingActive = await prisma.needMatch.findFirst({
+    where: {
+      needId: match.needId,
+      status: { in: ["MATCHED", "CANCELLING"] },
+      NOT: { id: matchId },
+    },
+    select: { id: true },
+  });
+  if (existingActive) {
+    return { ok: false, error: "已选定一位提供者,请先结束当前对接再更换" };
+  }
+
   await prisma.needMatch.update({
     where: { id: matchId },
     // 写 matchedAt:cron「双方均未确认 7 天自动完成」分支以 matchedAt 为锚点,
@@ -471,6 +485,58 @@ export async function rejectApplicant(matchId: string): Promise<ActionResult> {
 }
 
 /**
+ * 取消方撤回取消(CANCELLING→MATCHED,清空 cancelledBy*)。
+ * 用于误点「申请取消」后回退,使对接恢复进行(非硬终止)。仅取消发起方可撤回。
+ */
+export async function resumeNeedMatch(matchId: string): Promise<ActionResult> {
+  const actor = await resolveActor();
+  if ("error" in actor) return { ok: false, error: actor.error };
+
+  const match = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: { needId: true, status: true, providerId: true, cancelledById: true },
+  });
+  if (!match) return { ok: false, error: "应征记录不存在" };
+  if (match.status !== "CANCELLING") {
+    return { ok: false, error: "该应征当前不在取消协商中" };
+  }
+  if (match.cancelledById !== actor.id) {
+    return { ok: false, error: "只有取消发起方可撤回取消" };
+  }
+
+  const need = await prisma.need.findUnique({
+    where: { id: match.needId },
+    select: { requesterId: true },
+  });
+  if (!need) return { ok: false, error: "需求不存在" };
+
+  await prisma.needMatch.update({
+    where: { id: matchId },
+    data: {
+      status: "MATCHED",
+      cancelledById: null,
+      cancelledAt: null,
+      liabilityAgreed: null,
+      liabilityDecidedAt: null,
+    },
+  });
+
+  const otherId = actor.id === match.providerId ? need.requesterId : match.providerId;
+  await notify({
+    userId: otherId,
+    type: "need_cancel_withdrawn",
+    title: "对方已撤回取消",
+    body: "对方撤回了本次取消申请,对接继续进行。",
+    link: "/me/matches",
+    data: { matchId },
+  });
+
+  revalidateNeedRoutes(match.needId);
+  revalidatePath("/me/matches");
+  return { ok: true };
+}
+
+/**
  * 任一参与方确认完成(双方各确认一次)。
  * - 第一方 → 设置 firstConfirmer,通知对方;
  * - 第二方 → COMPLETED,通知双方评价。
@@ -505,12 +571,12 @@ export async function confirmNeedMatchComplete(
 
   const otherId = actor.id === match.providerId ? need.requesterId : match.providerId;
 
-  // 第一方确认。
-  if (!match.firstConfirmerId) {
-    await prisma.needMatch.update({
-      where: { id: matchId },
-      data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
-    });
+  // 原子抢"第一确认人":仅当仍为 MATCHED 且 firstConfirmerId 为 null 时成功(防并发双首确认竞态)。
+  const claimed = await prisma.needMatch.updateMany({
+    where: { id: matchId, status: "MATCHED", firstConfirmerId: null },
+    data: { firstConfirmerId: actor.id, firstConfirmedAt: new Date() },
+  });
+  if (claimed.count > 0) {
     await notify({
       userId: otherId,
       type: "need_confirm_request",
@@ -524,9 +590,20 @@ export async function confirmNeedMatchComplete(
     return { ok: true, completed: false };
   }
 
-  // 同一人重复确认。
-  if (match.firstConfirmerId === actor.id) {
+  // 未抢到 → 重读判定:我已确认 / 我是第二方 / 状态已变。
+  const fresh = await prisma.needMatch.findUnique({
+    where: { id: matchId },
+    select: { status: true, firstConfirmerId: true },
+  });
+  if (!fresh) return { ok: false, error: "应征记录不存在" };
+  if (fresh.status !== "MATCHED") {
+    return { ok: false, error: "该应征当前不可确认完成" };
+  }
+  if (fresh.firstConfirmerId === actor.id) {
     return { ok: false, error: "你已确认,请等待对方确认" };
+  }
+  if (!fresh.firstConfirmerId) {
+    return { ok: false, error: "请稍后重试" };
   }
 
   // 第二方确认 → 完成。

@@ -5,6 +5,7 @@ import { ShieldAlert, Star, Package, Wrench, Search } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/time";
 import { PageContainer } from "@/components/layout/page-container";
 import {
   Avatar,
@@ -523,10 +524,4 @@ function renderPrice(
   return "面议";
 }
 
-function formatDate(d: Date): string {
-  // Locale-independent, deterministic formatting for SSR stability.
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+// formatDate 统一来自 @/lib/time,显式 Asia/Shanghai。

@@ -13,6 +13,7 @@ import {
   Pause,
   Pencil,
   Play,
+  RotateCcw,
   ShieldCheck,
   Users,
   XCircle,
@@ -54,6 +55,7 @@ import {
   pauseNeed,
   rejectApplicant,
   requestCancelNeedMatch,
+  resumeNeedMatch,
   resumeNeed,
 } from "@/app/(app)/needs/actions";
 
@@ -90,6 +92,8 @@ export interface NeedDetailActionsProps {
   matches: MatchedSummary[];
   viewerApplied: boolean;
   viewerNotSelected: boolean;
+  /** 当前用户仍是候选(APPLIED)且需求已选定他人 → 详情页"已选定他人"提示。 */
+  viewerIsCandidateOthersSelected: boolean;
 }
 
 const MATCH_STATUS_LABEL: Record<MatchedSummary["status"], string> = {
@@ -196,9 +200,26 @@ function MatchStatusRow({ match }: { match: MatchedSummary }) {
 
       {match.status === "CANCELLING" ? (
         match.isCanceller ? (
-          <p className="text-xs text-muted-foreground">
-            你已申请取消,等待对方决定是否同意免责。
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-muted-foreground">
+              你已申请取消,等待对方决定是否同意免责。
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const res = await resumeNeedMatch(match.matchId);
+                  if (res.ok) toast.success("已撤回取消,对接继续");
+                  else toast.error(res.error);
+                })
+              }
+            >
+              <RotateCcw />
+              撤回取消
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-wrap gap-2">
             <Button
@@ -476,6 +497,7 @@ function ProviderActions({
   status,
   viewerApplied,
   viewerNotSelected,
+  viewerIsCandidateOthersSelected,
   matches,
 }: {
   needId: string;
@@ -483,6 +505,7 @@ function ProviderActions({
   status: "OPEN" | "PAUSED" | "CLOSED";
   viewerApplied: boolean;
   viewerNotSelected: boolean;
+  viewerIsCandidateOthersSelected: boolean;
   matches: MatchedSummary[];
 }) {
   const [pending, startTransition] = useTransition();
@@ -550,6 +573,11 @@ function ProviderActions({
           {viewerNotSelected && canApply ? (
             <p className="mt-2 text-center text-xs text-muted-foreground">
               你本次未被选中,可重新应征。
+            </p>
+          ) : null}
+          {viewerApplied && viewerIsCandidateOthersSelected ? (
+            <p className="mt-2 rounded-md bg-warning/10 px-3 py-2 text-center text-xs text-muted-foreground">
+              需求方已选定一位提供者,你仍在候选中;若对方退出,需求方可能再联系你。
             </p>
           ) : null}
         </div>
@@ -645,6 +673,7 @@ export function NeedDetailActions({
   matches,
   viewerApplied,
   viewerNotSelected,
+  viewerIsCandidateOthersSelected,
 }: NeedDetailActionsProps) {
   if (isRequester) {
     return (
@@ -665,6 +694,7 @@ export function NeedDetailActions({
         status={status}
         viewerApplied={viewerApplied}
         viewerNotSelected={viewerNotSelected}
+        viewerIsCandidateOthersSelected={viewerIsCandidateOthersSelected}
         matches={matches}
       />
     );
