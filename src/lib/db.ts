@@ -10,8 +10,14 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 // 抛 ETIMEDOUT(及类似的瞬时网络错误),表现为页面"首次加载 500、刷新即恢复"。
 // 这类错误意味着请求根本没到达 DB,重试是安全的;握手成功后重试即命中,
 // 避免用户看到 "A server error occurred. Reload to try again."。
+// Neon(远端 DB)冷启动 + 跨区延迟下,空闲后的首个查询常因 TCP 握手超时
+// 抛 ETIMEDOUT(及类似的瞬时网络错误),表现为页面"首次加载 500、刷新即恢复"。
+// 这类错误意味着请求根本没到达 DB,重试是安全的;握手成功后重试即命中,
+// 避免用户看到 "A server error occurred. Reload to try again."。
+// 扩展:覆盖 Neon 计算节点挂起/唤醒(code:9 / suspended / cannot_connect_now /
+// 57P03 等)与连接被回收(connection terminated),让冷启动场景也走重试。
 const TRANSIENT_ERR =
-  /ETIMEDOUT|ENOTFOUND|ECONNRESET|EAI_AGAIN|P1001|P1002|P1008|P1017|timeout|terminated/i;
+  /ETIMEDOUT|ENOTFOUND|ECONNRESET|EAI_AGAIN|P1001|P1002|P1008|P1017|timeout|terminated|code:? ?9|suspended|connection (?:terminated|refused)|cannot_connect_now|57P03|57P02|0800[16]/i;
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
   for (let attempt = 0; ; attempt++) {
