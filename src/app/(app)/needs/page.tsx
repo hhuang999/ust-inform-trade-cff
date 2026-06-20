@@ -25,6 +25,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
+  EmptyContent,
 } from "@/components/ui/empty";
 import {
   NEED_CATEGORIES,
@@ -290,13 +291,24 @@ export default async function NeedsPage({
             <EmptyMedia variant="icon">
               <Megaphone />
             </EmptyMedia>
-            <EmptyTitle>暂无需求</EmptyTitle>
+            <EmptyTitle>
+              {search || category || expectedTime || formatPref
+                ? "没有匹配的需求"
+                : "暂无需求"}
+            </EmptyTitle>
             <EmptyDescription>
               {search || category || expectedTime || formatPref
                 ? "换个筛选条件试试,或发布你的需求"
                 : "还没有人发布需求,成为第一个发布者吧"}
             </EmptyDescription>
           </EmptyHeader>
+          {search || category || expectedTime || formatPref ? (
+            <EmptyContent>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/needs">清除筛选</Link>
+              </Button>
+            </EmptyContent>
+          ) : null}
         </Empty>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

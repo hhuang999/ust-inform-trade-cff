@@ -23,6 +23,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
+  EmptyContent,
 } from "@/components/ui/empty";
 import { SERVICE_CATEGORIES, SERVICE_FORMATS } from "@/lib/constants/service";
 import { expandSearchTerms } from "@/lib/search";
@@ -287,13 +288,22 @@ export default async function ServicesPage({
             <EmptyMedia variant="icon">
               <Sparkles />
             </EmptyMedia>
-            <EmptyTitle>暂无服务</EmptyTitle>
+            <EmptyTitle>
+              {search || category || format ? "没有匹配的服务" : "暂无服务"}
+            </EmptyTitle>
             <EmptyDescription>
               {search || category || format
                 ? "换个筛选条件试试,或发布你的服务"
                 : "还没有人发布服务,成为第一个服务提供者吧"}
             </EmptyDescription>
           </EmptyHeader>
+          {search || category || format ? (
+            <EmptyContent>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/services">清除筛选</Link>
+              </Button>
+            </EmptyContent>
+          ) : null}
         </Empty>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
