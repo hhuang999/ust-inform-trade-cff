@@ -36,7 +36,7 @@ export default async function GuideHubPage() {
             新手上手指南
           </span>
           <h1 className="font-serif text-4xl font-bold tracking-tight md:text-5xl">
-            玩转校园枢纽
+            玩转校园枢纽 UniSwap
           </h1>
           <p className="max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
             三分钟了解全部功能与每一处操作。无论你是否注册，都能在这里看清平台能为你做什么。

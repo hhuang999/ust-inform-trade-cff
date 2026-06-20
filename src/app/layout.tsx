@@ -21,8 +21,8 @@ const serif = Lora({
 
 export const metadata: Metadata = {
   title: {
-    default: "校园枢纽 · HKUST(GZ)",
-    template: "%s · 校园枢纽",
+    default: "校园枢纽 UniSwap · HKUST(GZ)",
+    template: "%s · 校园枢纽 UniSwap",
   },
   description:
     "港科大（广州）校园二手物品交易与咨询服务匹配平台 —— 真实认证的校园社区，安全、可信、便捷。",

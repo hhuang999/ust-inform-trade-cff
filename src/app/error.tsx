@@ -40,7 +40,7 @@ export default function GlobalError({
       </Button>
 
       <p className="mt-12 text-xs text-muted-foreground">
-        校园枢纽 · HKUST（广州）
+        校园枢纽 UniSwap · HKUST（广州）
       </p>
     </main>
   );

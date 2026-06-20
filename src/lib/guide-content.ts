@@ -51,7 +51,7 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
     title: "新手入门",
     icon: Rocket,
     accent: "bg-primary/10 text-primary",
-    tagline: "三分钟开启你的校园枢纽之旅",
+    tagline: "三分钟开启你的校园枢纽 UniSwap之旅",
     featured: true,
     summary: [
       "注册账号、完善资料、（推荐）完成学生证认证，即可发布闲置、预约服务、撮合需求，参与校园互助。",
