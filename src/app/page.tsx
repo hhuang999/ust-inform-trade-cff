@@ -196,13 +196,13 @@ export default async function Home() {
         {/* ── Hero ── */}
         <section className="bg-gradient-to-b from-primary-container/50 via-primary-container/15 to-transparent">
           <PageContainer className="flex flex-col items-center gap-6 pt-20 pb-8 text-center md:pt-28 md:pb-12">
-            <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant/50 bg-card/70 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
-              <span className="size-1.5 rounded-full bg-primary" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/5 px-5 py-2 text-sm font-medium text-foreground shadow-sm backdrop-blur">
+              <span className="size-2 rounded-full bg-primary" />
               港科大（广州）· 校园互助市场
             </span>
 
             <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-              {nickname ? `欢迎回来，${nickname}` : "校园枢纽"}
+              {nickname ? `欢迎回来，${nickname}` : "校园枢纽UniSwap"}
             </h1>
 
             <p className="max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
@@ -446,7 +446,7 @@ export default async function Home() {
         <section className="bg-surface-container-lowest/60">
           <PageContainer className="space-y-5 py-12">
             <SectionHeading
-              title="为什么信任校园枢纽"
+              title="为什么信任校园枢纽UniSwap"
               description="一套围绕校园场景设计的信任与运营闭环"
             />
             <div className="grid gap-5 sm:grid-cols-3">
@@ -485,7 +485,7 @@ export default async function Home() {
             <h2 className="font-serif text-2xl font-bold tracking-tight md:text-3xl">
               {session?.user
                 ? "把闲置变成机会"
-                : "准备好加入校园枢纽了吗？"}
+                : "准备好加入校园枢纽UniSwap了吗？"}
             </h2>
             <p className="max-w-md text-sm leading-6 text-muted-foreground">
               {session?.user
@@ -504,7 +504,7 @@ export default async function Home() {
         {/* Footer line */}
         <PageContainer className="py-10">
           <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} 校园枢纽 · 港科大（广州）· 校内互助，让信息流转
+            © {new Date().getFullYear()} 校园枢纽UniSwap · 港科大（广州）· 校内互助，让信息流转
           </p>
         </PageContainer>
       </main>
