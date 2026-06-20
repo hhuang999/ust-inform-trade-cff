@@ -54,6 +54,7 @@ import {
   expressInterest,
 } from "@/app/(app)/items/actions";
 import { formatDate as formatInterestTime } from "@/lib/time";
+import { ReviewDialog } from "@/components/site/review-dialog";
 
 // 意向点击时间统一来自 @/lib/time(formatDate),显式 Asia/Shanghai,且带年份避免跨年混淆。
 
@@ -229,6 +230,7 @@ function DealStatusRow({
   counterpartyNickname,
   firstConfirmerId,
   viewerId,
+  hasReviewed,
 }: {
   dealId: string;
   dealStatus: "PENDING" | "COMPLETED";
@@ -236,6 +238,7 @@ function DealStatusRow({
   counterpartyNickname: string;
   firstConfirmerId: string | null;
   viewerId: string;
+  hasReviewed: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const youConfirmed = firstConfirmerId === viewerId;
@@ -292,6 +295,14 @@ function DealStatusRow({
           </Button>
         </div>
       ) : null}
+      {dealStatus === "COMPLETED" ? (
+        <ReviewDialog
+          dealType="ITEM"
+          dealId={dealId}
+          revieweeNickname={counterpartyNickname}
+          hasReviewed={hasReviewed}
+        />
+      ) : null}
     </div>
   );
 }
@@ -304,11 +315,13 @@ function SellerInterests({
   interests,
   currentDeal,
   viewerId,
+  hasReviewed,
 }: {
   itemId: string;
   interests: InterestSummary[];
   currentDeal: CurrentDeal | null;
   viewerId: string;
+  hasReviewed: boolean;
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -343,6 +356,7 @@ function SellerInterests({
             counterpartyNickname={currentDeal.buyerNickname}
             firstConfirmerId={currentDeal.firstConfirmerId}
             viewerId={viewerId}
+            hasReviewed={hasReviewed}
           />
         ) : null}
 
@@ -493,6 +507,10 @@ export interface ItemDetailActionsProps {
   interests: InterestSummary[];
   currentDeal: CurrentDeal | null;
   sellerNickname: string | null;
+  itemStatus: "AVAILABLE" | "PENDING" | "SOLD" | "CLOSED";
+  hasReviewed: boolean;
+  /** 当前用户在意向队列中的排位(服务端计算,无需下发完整列表)。 */
+  viewerInterestRank: number | null;
 }
 
 /**
@@ -508,6 +526,9 @@ export function ItemDetailActions({
   interests,
   currentDeal,
   sellerNickname,
+  itemStatus,
+  hasReviewed,
+  viewerInterestRank,
 }: ItemDetailActionsProps) {
   if (isSeller) {
     if (!viewerId) return null;
@@ -519,6 +540,7 @@ export function ItemDetailActions({
           interests={interests}
           currentDeal={currentDeal}
           viewerId={viewerId}
+          hasReviewed={hasReviewed}
         />
       </div>
     );
@@ -529,15 +551,10 @@ export function ItemDetailActions({
     // 当前买家正是这笔进行中/已完成交易的对象 → 显示确认完成卡。
     const isBuyerInDeal =
       !!currentDeal && !!viewerId && currentDeal.buyerId === viewerId;
-    // 当前用户在意向队列中的排位(按意向时间升序)。
-    const viewerInterestRank = viewerId
-      ? (() => {
-          const idx = interests.findIndex((it) => it.userId === viewerId);
-          return idx >= 0 ? idx + 1 : null;
-        })()
-      : null;
     // 卖家是否已选定其他买家(当前用户为备选)。
     const chosenOtherBuyer = !!currentDeal && currentDeal.buyerId !== viewerId;
+    // 已售出且当前用户非该笔买家 → 不再显示"我想要",改为售罄提示。
+    const soldToOther = itemStatus === "SOLD" && !isBuyerInDeal;
     return (
       <div className="space-y-4">
         {isBuyerInDeal ? (
@@ -548,15 +565,25 @@ export function ItemDetailActions({
             counterpartyNickname={sellerNickname ?? "卖家"}
             firstConfirmerId={currentDeal!.firstConfirmerId}
             viewerId={viewerId!}
+            hasReviewed={hasReviewed}
           />
         ) : null}
-        <BuyerActions
-          itemId={itemId}
-          contact={contact}
-          hasInterest={hasInterest}
-          viewerInterestRank={viewerInterestRank}
-          chosenOtherBuyer={chosenOtherBuyer}
-        />
+        {soldToOther ? (
+          <Card>
+            <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
+              <XCircle className="size-4" />
+              该物品已售出
+            </CardContent>
+          </Card>
+        ) : (
+          <BuyerActions
+            itemId={itemId}
+            contact={contact}
+            hasInterest={hasInterest}
+            viewerInterestRank={viewerInterestRank}
+            chosenOtherBuyer={chosenOtherBuyer}
+          />
+        )}
       </div>
     );
   }

@@ -159,22 +159,25 @@ export default async function ItemDetailPage({
     hasInterest = !!interest;
   }
 
-  // 意向人摘要(传给客户端组件;注意全部为可序列化基本类型)。
+  // 意向人摘要:仅卖家下发完整列表(含他人留言/点击时间),非卖家下发空数组,
+  // 避免完整意向队列被序列化到任意访客浏览器(隐私泄露)。
   const interestRatings = await aggregateRatings(
     item.interests.map((it) => it.user.id),
     "ITEM",
   );
-  const interests: InterestSummary[] = item.interests.map((it) => ({
-    userId: it.user.id,
-    nickname: it.user.nickname,
-    department: it.user.department,
-    enrollmentYear: it.user.enrollmentYear,
-    verificationStatus: it.user.verificationStatus as VerificationStatus,
-    avatarUrl: publicUrl(it.user.avatarKey),
-    rating: ratingNumber(interestRatings, it.user.id),
-    message: it.message,
-    createdAt: it.createdAt.toISOString(),
-  }));
+  const interests: InterestSummary[] = isSeller
+    ? item.interests.map((it) => ({
+        userId: it.user.id,
+        nickname: it.user.nickname,
+        department: it.user.department,
+        enrollmentYear: it.user.enrollmentYear,
+        verificationStatus: it.user.verificationStatus as VerificationStatus,
+        avatarUrl: publicUrl(it.user.avatarKey),
+        rating: ratingNumber(interestRatings, it.user.id),
+        message: it.message,
+        createdAt: it.createdAt.toISOString(),
+      }))
+    : [];
 
   // 当前进行中 / 已完成的交易(忽略已取消)。
   let currentDeal: CurrentDeal | null = null;
@@ -190,6 +193,29 @@ export default async function ItemDetailPage({
       status: item.deal.status,
       firstConfirmerId: item.deal.firstConfirmerId,
     };
+  }
+
+  // 当前用户在意向队列中的排位(服务端计算,避免下发完整意向列表给非卖家)。
+  const viewerInterestRank = viewerId
+    ? (() => {
+        const idx = item.interests.findIndex((it) => it.userId === viewerId);
+        return idx >= 0 ? idx + 1 : null;
+      })()
+    : null;
+  // 当前用户是否已对该物品交易评价过(详情页 COMPLETED 评价入口用)。
+  let hasReviewed = false;
+  if (viewerId && currentDeal) {
+    const review = await prisma.review.findUnique({
+      where: {
+        dealType_dealId_reviewerId: {
+          dealType: "ITEM",
+          dealId: currentDeal.dealId,
+          reviewerId: viewerId,
+        },
+      },
+      select: { id: true },
+    });
+    hasReviewed = !!review;
   }
 
   const images = item.imageKeys
@@ -406,6 +432,9 @@ export default async function ItemDetailPage({
             interests={interests}
             currentDeal={currentDeal}
             sellerNickname={item.seller.nickname}
+            itemStatus={item.status}
+            hasReviewed={hasReviewed}
+            viewerInterestRank={viewerInterestRank}
           />
 
           {/* 安全提示 */}
