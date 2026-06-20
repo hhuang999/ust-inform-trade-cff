@@ -29,6 +29,9 @@ export function NotificationBell() {
   }, []);
 
   async function markRead(id: string) {
+    // 已读项不再重复 PATCH 或扣减未读(否则点已读条目会让未读计数偏低)。
+    const target = items.find((i) => i.id === id);
+    if (!target || target.read) return;
     await fetch(`/api/notifications/${id}/read`, { method: "PATCH" });
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, read: true } : i)));
     setUnread((u) => (u ? u - 1 : 0));

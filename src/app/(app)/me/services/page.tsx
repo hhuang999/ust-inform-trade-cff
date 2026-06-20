@@ -140,7 +140,7 @@ export default async function MyServicesPage({
         : null
     ).id;
   } catch {
-    redirect("/login");
+    redirect("/login?callbackUrl=/me/services");
   }
 
   const sp = await searchParams;

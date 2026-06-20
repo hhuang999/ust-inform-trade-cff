@@ -36,7 +36,7 @@ export default async function FavoritesPage() {
         : null
     ).id;
   } catch {
-    redirect("/login");
+    redirect("/login?callbackUrl=/me/favorites");
   }
 
   const favorites = await prisma.favorite.findMany({

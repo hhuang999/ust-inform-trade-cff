@@ -102,7 +102,7 @@ export default async function MyItemsPage({
         : null
     ).id;
   } catch {
-    redirect("/login");
+    redirect("/login?callbackUrl=/me/items");
   }
 
   const sp = await searchParams;
