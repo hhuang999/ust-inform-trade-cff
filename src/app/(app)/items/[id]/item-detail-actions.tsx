@@ -53,14 +53,9 @@ import {
   confirmItemComplete,
   expressInterest,
 } from "@/app/(app)/items/actions";
+import { formatDate as formatInterestTime } from "@/lib/time";
 
-/** 意向点击时间格式化为 MM-DD。 */
-function formatInterestTime(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
+// 意向点击时间统一来自 @/lib/time(formatDate),显式 Asia/Shanghai,且带年份避免跨年混淆。
 
 /**
  * 买家侧动作卡(已登录、非卖家)。

@@ -13,6 +13,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireVerifiedUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { formatSlotRangeCST as formatSlotRange } from "@/lib/time";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
 import { Button } from "@/components/ui/button";
@@ -119,39 +120,7 @@ function publicUrl(imageKey?: string | null): string | null {
   return `${base.replace(/\/$/, "")}/${imageKey}`;
 }
 
-/** 把 ISO 时间格式化为本地可读的日期时间(YYYY-MM-DD HH:mm)。 */
-function formatSlot(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
-}
-
-/** 同一日内仅展示时间,跨日展示完整日期。 */
-function formatSlotRange(startIso: string, endIso: string): string {
-  const start = new Date(startIso);
-  const end = new Date(endIso);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return formatSlot(startIso);
-  }
-  const sameDay =
-    start.getFullYear() === end.getFullYear() &&
-    start.getMonth() === end.getMonth() &&
-    start.getDate() === end.getDate();
-  const datePart = formatSlot(startIso).slice(0, 10);
-  if (sameDay) {
-    const hh = String(end.getHours()).padStart(2, "0");
-    const mm = String(end.getMinutes()).padStart(2, "0");
-    return `${datePart} ${String(start.getHours()).padStart(2, "0")}:${String(
-      start.getMinutes()
-    ).padStart(2, "0")} ~ ${hh}:${mm}`;
-  }
-  return `${formatSlot(startIso)} ~ ${formatSlot(endIso)}`;
-}
+// 时段格式化统一走 @/lib/time(显式 Asia/Shanghai),避免服务端 UTC 渲染偏差。
 
 export default async function MyServicesPage({
   searchParams,

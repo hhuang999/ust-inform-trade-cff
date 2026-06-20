@@ -14,6 +14,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireVerifiedUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/time";
 import { aggregateRatings, ratingNumber } from "@/lib/reputation";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
@@ -499,10 +500,4 @@ function DealTimeline({
   );
 }
 
-/** 格式化日期为 YYYY-MM-DD。 */
-function formatDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+// formatDate 统一来自 @/lib/time(显式 Asia/Shanghai),不再用服务端 getFullYear/getDate。

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { formatDateTime as formatLocal } from "@/lib/time";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -106,18 +107,7 @@ export interface ServiceDetailActionsProps {
   availableSlots: SlotSummary[];
 }
 
-function formatLocal(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("zh-CN", {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
+// formatLocal 统一来自 @/lib/time(formatDateTime),显式 Asia/Shanghai。
 
 const BOOKING_STATUS_LABEL: Record<ActiveBooking["status"], string> = {
   PENDING: "待确认",

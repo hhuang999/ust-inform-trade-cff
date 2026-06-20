@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireVerifiedUser, type SessionUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { formatNoticeTime as formatTime, isSameDayCST as isSameDay } from "@/lib/time";
 import { notificationHref } from "@/lib/notification-href";
 import { PageContainer } from "@/components/layout/page-container";
 import { SectionHeading } from "@/components/site/section-heading";
@@ -50,25 +51,7 @@ const CATEGORY_ICON = {
   system: ShieldCheck,
 } as const;
 
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-/** 相对/绝对时间展示:今天显示 HH:mm,否则显示 MM-DD HH:mm。 */
-function formatTime(d: Date, now: Date): string {
-  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes()
-  ).padStart(2, "0")}`;
-  if (isSameDay(d, now)) return hm;
-  const md = `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-  return `${md} ${hm}`;
-}
+// 时间分组/格式化统一来自 @/lib/time(isSameDayCST / formatNoticeTime),显式 Asia/Shanghai。
 
 function buildHref(type: FilterType): string {
   return type === "all" ? "/notifications" : `/notifications?type=${type}`;
