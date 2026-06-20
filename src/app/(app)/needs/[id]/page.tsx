@@ -19,6 +19,8 @@ import {
 } from "./need-detail-actions";
 import { ReportDialog } from "@/components/site/report-dialog";
 import { FavoriteButton } from "@/components/site/favorite-button";
+import { MessageThread } from "@/components/site/message-thread";
+import { loadMessageThread, type MessageThreadData } from "@/lib/messages";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +35,13 @@ const EXPECTED_TIME_LABEL: Record<string, string> = {
 
 export default async function NeedDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
 
   const need = await prisma.need.findUnique({
     where: { id },
@@ -161,6 +166,22 @@ export default async function NeedDetailPage({
       select: { id: true },
     });
     isNeedFavorited = !!fav;
+  }
+
+  // 站内私信(沟通留言):仅交易关系方(发布者 ↔ 应征/撮合提供者)可见。
+  // 发布者 → 按 ?with=<providerId> 选择某位提供者;提供者(已应征)→ 与发布者。
+  let messageThread: MessageThreadData | null = null;
+  if (viewerId) {
+    const withId = typeof sp.with === "string" ? sp.with : null;
+    const viewerHasMatch = need.matches.some((m) => m.provider.id === viewerId);
+    const otherUserId = isRequester
+      ? withId
+      : viewerHasMatch
+        ? need.requester.id
+        : null;
+    if (otherUserId) {
+      messageThread = await loadMessageThread("NEED", id, viewerId, otherUserId);
+    }
   }
 
   return (
@@ -322,6 +343,18 @@ export default async function NeedDetailPage({
           </div>
         </aside>
       </div>
+
+      {/* 沟通留言:仅交易关系方可见(发布者↔提供者) */}
+      {messageThread && viewerId ? (
+        <MessageThread
+          contextType="NEED"
+          contextId={need.id}
+          viewerId={viewerId}
+          otherUserId={messageThread.otherUserId}
+          otherNickname={messageThread.otherNickname}
+          initialMessages={messageThread.messages}
+        />
+      ) : null}
     </PageContainer>
   );
 }

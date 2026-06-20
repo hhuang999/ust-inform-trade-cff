@@ -128,6 +128,14 @@ function BuyerActions({
               点击后加入意向队列,卖家会在意向列表中看到你(可附留言)。
             </p>
           )}
+          {interested ? (
+            <Button asChild variant="outline" size="sm" className="w-full">
+              <Link href="#messages">
+                <MessageCircle />
+                给卖家留言
+              </Link>
+            </Button>
+          ) : null}
         </div>
 
         <Separator />
@@ -409,20 +417,32 @@ function SellerInterests({
                       </p>
                     ) : null}
                   </div>
-                  {isCurrentBuyer ? (
-                    <Badge variant="success" className="font-normal">
-                      已选定
-                    </Badge>
-                  ) : (
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    {isCurrentBuyer ? (
+                      <Badge variant="success" className="font-normal">
+                        已选定
+                      </Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleChoose(it.userId)}
+                        disabled={pending}
+                      >
+                        选择与TA交易
+                      </Button>
+                    )}
                     <Button
+                      asChild
                       size="sm"
-                      variant="outline"
-                      onClick={() => handleChoose(it.userId)}
-                      disabled={pending}
+                      variant="ghost"
+                      className="h-7 px-2 text-xs text-muted-foreground"
                     >
-                      选择与TA交易
+                      <Link href={`/items/${itemId}?with=${it.userId}#messages`}>
+                        私信
+                      </Link>
                     </Button>
-                  )}
+                  </div>
                 </li>
               );
             })}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, GraduationCap, ShieldCheck, ShoppingBag } from "lucide-react";
+import { Bell, GraduationCap, MessageSquare, ShieldCheck, ShoppingBag } from "lucide-react";
 import type { Notification } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
@@ -24,7 +24,7 @@ import { MarkAllReadButton } from "./mark-all-read-button";
 
 export const dynamic = "force-dynamic";
 
-type FilterType = "item" | "service" | "system" | "all";
+type FilterType = "item" | "service" | "system" | "message" | "all";
 
 /** 把通知 type 前缀映射到筛选分类。 */
 function categoryOf(type: string): Exclude<FilterType, "all"> {
@@ -35,6 +35,7 @@ function categoryOf(type: string): Exclude<FilterType, "all"> {
     type.startsWith("need")
   )
     return "service";
+  if (type.startsWith("message")) return "message";
   return "system"; // verify_* / system / 兜底
 }
 
@@ -42,12 +43,14 @@ const TYPE_FILTERS: { value: FilterType; label: string }[] = [
   { value: "all", label: "全部" },
   { value: "item", label: "物品" },
   { value: "service", label: "服务" },
+  { value: "message", label: "私信" },
   { value: "system", label: "系统" },
 ];
 
 const CATEGORY_ICON = {
   item: ShoppingBag,
   service: GraduationCap,
+  message: MessageSquare,
   system: ShieldCheck,
 } as const;
 
@@ -103,7 +106,7 @@ export default async function NotificationsPage({
     <PageContainer className="space-y-6">
       <SectionHeading
         title="通知"
-        description="来自物品、服务与系统的消息"
+        description="来自物品、服务、私信与系统的消息"
         action={<MarkAllReadButton disabled={!hasAny || unreadCount === 0} />}
       />
 
