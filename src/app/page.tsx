@@ -76,11 +76,15 @@ export default async function Home() {
   // 首页统计与最新物品/服务/需求:廉价 count / limit 查询。
   // 用 allSettled 让每个查询独立结算 —— 远端 DB(Neon)冷启动/高延迟时单个查询
   // 可能超时,失败的那个降级为空,其余照常渲染,首页永不因 DB 抖动而 500。
+  // 统计口径:注册用户(全部)、累计发布(物品+服务+需求全量)、成功成交(三类 COMPLETED 之和)。
   const discovery = await Promise.allSettled([
-    prisma.item.count({ where: { status: "AVAILABLE", deletedAt: null } }),
-    prisma.user.count({
-      where: { verificationStatus: "VERIFIED", deletedAt: null },
-    }),
+    prisma.user.count({ where: { deletedAt: null } }),
+    prisma.item.count({ where: { deletedAt: null } }),
+    prisma.service.count({ where: { deletedAt: null } }),
+    prisma.need.count({ where: { deletedAt: null } }),
+    prisma.itemDeal.count({ where: { status: "COMPLETED" } }),
+    prisma.booking.count({ where: { status: "COMPLETED" } }),
+    prisma.needMatch.count({ where: { status: "COMPLETED" } }),
     prisma.item.findMany({
       where: { status: "AVAILABLE", deletedAt: null },
       orderBy: { createdAt: "desc" },
@@ -105,17 +109,19 @@ export default async function Home() {
   ]);
   const ok = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
     r.status === "fulfilled" ? r.value : fallback;
-  const availableItems = ok(discovery[0], 0);
-  const verifiedUsers = ok(discovery[1], 0);
-  const latestItems = ok(discovery[2], []);
-  const latestServices = ok(discovery[3], []);
-  const latestNeeds = ok(discovery[4], []);
+  const registeredUsers = ok(discovery[0], 0);
+  const totalPublished =
+    ok(discovery[1], 0) + ok(discovery[2], 0) + ok(discovery[3], 0);
+  const completedDeals =
+    ok(discovery[4], 0) + ok(discovery[5], 0) + ok(discovery[6], 0);
+  const latestItems = ok(discovery[7], []);
+  const latestServices = ok(discovery[8], []);
+  const latestNeeds = ok(discovery[9], []);
 
   const stats = [
-    { label: "在售物品", value: availableItems },
-    { label: "认证用户", value: verifiedUsers },
-    { label: "校内互助", value: "温暖" },
-    { label: "安全撮合", value: "安心" },
+    { label: "注册用户", value: registeredUsers },
+    { label: "累计发布", value: totalPublished },
+    { label: "成功成交", value: completedDeals },
   ];
 
   return (
@@ -149,9 +155,15 @@ export default async function Home() {
                   <ArrowRight />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className={ANIM}>
-                <Link href="/register">加入社区</Link>
-              </Button>
+              {session?.user ? (
+                <Button asChild size="lg" variant="outline" className={ANIM}>
+                  <Link href={`/profile/${session.user.id}`}>我的主页</Link>
+                </Button>
+              ) : (
+                <Button asChild size="lg" variant="outline" className={ANIM}>
+                  <Link href="/register">注册并登录</Link>
+                </Button>
+              )}
             </div>
           </PageContainer>
         </section>
@@ -159,7 +171,7 @@ export default async function Home() {
         {/* ── Stats strip ── */}
         <PageContainer className="py-6">
           <div
-            className={`grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4 ${ANIM}`}
+            className={`grid grid-cols-3 gap-3 md:gap-4 ${ANIM}`}
           >
             {stats.map((s) => (
               <div
