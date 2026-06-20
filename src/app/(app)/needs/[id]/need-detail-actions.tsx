@@ -92,6 +92,8 @@ export interface NeedDetailActionsProps {
   matches: MatchedSummary[];
   viewerApplied: boolean;
   viewerNotSelected: boolean;
+  /** 当前用户仍是候选(APPLIED)且需求已选定他人 → 详情页"已选定他人"提示。 */
+  viewerIsCandidateOthersSelected: boolean;
 }
 
 const MATCH_STATUS_LABEL: Record<MatchedSummary["status"], string> = {
@@ -495,6 +497,7 @@ function ProviderActions({
   status,
   viewerApplied,
   viewerNotSelected,
+  viewerIsCandidateOthersSelected,
   matches,
 }: {
   needId: string;
@@ -502,6 +505,7 @@ function ProviderActions({
   status: "OPEN" | "PAUSED" | "CLOSED";
   viewerApplied: boolean;
   viewerNotSelected: boolean;
+  viewerIsCandidateOthersSelected: boolean;
   matches: MatchedSummary[];
 }) {
   const [pending, startTransition] = useTransition();
@@ -569,6 +573,11 @@ function ProviderActions({
           {viewerNotSelected && canApply ? (
             <p className="mt-2 text-center text-xs text-muted-foreground">
               你本次未被选中,可重新应征。
+            </p>
+          ) : null}
+          {viewerApplied && viewerIsCandidateOthersSelected ? (
+            <p className="mt-2 rounded-md bg-warning/10 px-3 py-2 text-center text-xs text-muted-foreground">
+              需求方已选定一位提供者,你仍在候选中;若对方退出,需求方可能再联系你。
             </p>
           ) : null}
         </div>
@@ -664,6 +673,7 @@ export function NeedDetailActions({
   matches,
   viewerApplied,
   viewerNotSelected,
+  viewerIsCandidateOthersSelected,
 }: NeedDetailActionsProps) {
   if (isRequester) {
     return (
@@ -684,6 +694,7 @@ export function NeedDetailActions({
         status={status}
         viewerApplied={viewerApplied}
         viewerNotSelected={viewerNotSelected}
+        viewerIsCandidateOthersSelected={viewerIsCandidateOthersSelected}
         matches={matches}
       />
     );

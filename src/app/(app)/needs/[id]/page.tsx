@@ -136,6 +136,17 @@ export default async function NeedDetailPage({
     (m) => m.provider.id === viewerId && m.status === "NOT_SELECTED"
   );
 
+  // 当前用户仍是候选应征者(APPLIED),且需求已选定他人(MATCHED)→ 详情页给出"已选定他人"反馈,
+  // 而非仅靠通知(原页面无任何提示,候选者反复刷新困惑)。
+  const viewerIsCandidateOthersSelected =
+    !!viewerId &&
+    need.matches.some(
+      (m) => m.provider.id === viewerId && m.status === "APPLIED"
+    ) &&
+    need.matches.some(
+      (m) => m.status === "MATCHED" && m.provider.id !== viewerId
+    );
+
   // 当前用户是否已收藏(用于标题栏心形)。
   let isNeedFavorited = false;
   if (viewerId) {
@@ -289,6 +300,7 @@ export default async function NeedDetailPage({
             matches={matchedSummaryList}
             viewerApplied={viewerApplied}
             viewerNotSelected={viewerNotSelected}
+            viewerIsCandidateOthersSelected={viewerIsCandidateOthersSelected}
           />
 
           {/* 安全提示 */}
