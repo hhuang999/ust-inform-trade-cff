@@ -3,10 +3,12 @@ import {
   ArrowRight,
   HandHeart,
   LayoutGrid,
-  PackageOpen,
+  Package,
+  Search,
   ShieldCheck,
   Sparkles,
   Users,
+  Wrench,
 } from "lucide-react";
 
 import { auth } from "@/lib/auth";
@@ -34,6 +36,7 @@ import { NeedCard } from "@/components/site/need-card";
 
 export const dynamic = "force-dynamic";
 
+/** 平台亮点:可信、可追踪、有温度。 */
 const FEATURES = [
   {
     icon: ShieldCheck,
@@ -109,8 +112,10 @@ export default async function Home() {
   const ok = <T,>(r: PromiseSettledResult<T>, fallback: T): T =>
     r.status === "fulfilled" ? r.value : fallback;
   const registeredUsers = ok(discovery[0], 0);
-  const totalPublished =
-    ok(discovery[1], 0) + ok(discovery[2], 0) + ok(discovery[3], 0);
+  const itemCount = ok(discovery[1], 0);
+  const serviceCount = ok(discovery[2], 0);
+  const needCount = ok(discovery[3], 0);
+  const totalPublished = itemCount + serviceCount + needCount;
   const latestItems = ok(discovery[4], []);
   const latestServices = ok(discovery[5], []);
   const latestNeeds = ok(discovery[6], []);
@@ -120,19 +125,48 @@ export default async function Home() {
     { icon: LayoutGrid, label: "累计发布", value: totalPublished },
   ];
 
+  const productLines = [
+    {
+      icon: Package,
+      title: "物品交易",
+      desc: "教材、数码、生活好物——让闲置流转起来。",
+      href: "/items",
+      count: itemCount,
+      unit: "件",
+    },
+    {
+      icon: Wrench,
+      title: "技能服务",
+      desc: "学业辅导、技能教学、生活帮忙，按需预约。",
+      href: "/services",
+      count: serviceCount,
+      unit: "项",
+    },
+    {
+      icon: Search,
+      title: "互助需求",
+      desc: "发布你的需求，让有能力的同学主动找你。",
+      href: "/needs",
+      count: needCount,
+      unit: "条",
+    },
+  ] as const;
+
+  const fmt = (n: number) => n.toLocaleString("zh-CN");
+
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader user={headerUser} />
       <main className="flex-1">
         {/* ── Hero ── */}
-        <section className="bg-gradient-to-b from-primary-container/40 via-primary-container/15 to-transparent">
+        <section className="bg-gradient-to-b from-primary-container/50 via-primary-container/15 to-transparent">
           <PageContainer className="flex flex-col items-center gap-6 py-20 text-center md:py-28">
             <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant/50 bg-card/70 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
               <span className="size-1.5 rounded-full bg-primary" />
               港科大（广州）· 校园互助市场
             </span>
 
-            <h1 className="font-serif text-4xl font-bold tracking-tight md:text-6xl">
+            <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
               {nickname ? `欢迎回来，${nickname}` : "校园枢纽"}
             </h1>
 
@@ -159,31 +193,88 @@ export default async function Home() {
                 </Button>
               )}
             </div>
+
+            {/* 信任关键词:补足 Hero 密度,亮出平台底气。 */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground/80">
+              <span className="inline-flex items-center gap-1">
+                <ShieldCheck className="size-3.5 text-primary/70" />
+                学籍实名认证
+              </span>
+              <span className="text-outline-variant">·</span>
+              <span>信誉评价体系</span>
+              <span className="text-outline-variant">·</span>
+              <span>站内消息留痕</span>
+              <span className="text-outline-variant">·</span>
+              <span>超时自动收尾</span>
+            </div>
           </PageContainer>
         </section>
 
-        {/* ── Stats strip ── */}
-        <PageContainer className="py-6">
-          <div className={`mx-auto grid max-w-xl grid-cols-2 gap-3 md:gap-4 ${ANIM}`}>
-            {stats.map((s) => {
+        {/* ── Stats:一张宽卡,两大数字竖线分隔,撑起分量 ── */}
+        <PageContainer className="py-8">
+          <div
+            className={`mx-auto grid max-w-2xl grid-cols-2 overflow-hidden rounded-2xl border border-outline-variant/40 bg-card shadow-card ${ANIM}`}
+          >
+            {stats.map((s, i) => {
               const Icon = s.icon;
               return (
                 <div
                   key={s.label}
-                  className="flex items-center gap-3 rounded-xl border border-outline-variant/40 bg-card px-5 py-4 shadow-card"
+                  className={`flex items-center justify-center gap-3 px-4 py-6 md:gap-4 md:px-8 md:py-7 ${
+                    i > 0 ? "border-l border-outline-variant/40" : ""
+                  }`}
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="size-5" />
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:size-12">
+                    <Icon className="size-5 md:size-6" />
                   </span>
-                  <div className="min-w-0">
-                    <div className="font-serif text-2xl font-bold tabular-nums text-foreground md:text-3xl">
-                      {s.value.toLocaleString("zh-CN")}
+                  <div className="min-w-0 text-left">
+                    <div className="font-serif text-3xl font-bold leading-none tabular-nums text-foreground md:text-4xl">
+                      {fmt(s.value)}
                     </div>
-                    <div className="text-xs text-muted-foreground md:text-sm">
+                    <div className="mt-1.5 text-xs text-muted-foreground md:text-sm">
                       {s.label}
                     </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </PageContainer>
+
+        {/* ── 三条产品线:平台特色的入口 ── */}
+        <PageContainer className="space-y-5 py-10">
+          <SectionHeading
+            title="一站式校园市场"
+            description="三种方式，连接同学与校园生活"
+          />
+          <div className="grid gap-4 sm:grid-cols-3">
+            {productLines.map((p) => {
+              const Icon = p.icon;
+              return (
+                <Link
+                  key={p.title}
+                  href={p.href}
+                  className="group rounded-2xl border border-outline-variant/40 bg-card p-5 shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-float"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="size-6" />
+                    </span>
+                    <span className="rounded-full bg-surface-container px-2.5 py-1 text-xs font-medium tabular-nums text-on-surface-variant">
+                      已发布 {fmt(p.count)} {p.unit}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 font-serif text-lg font-bold tracking-tight">
+                    {p.title}
+                  </h3>
+                  <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                    {p.desc}
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
+                    去逛逛
+                    <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
               );
             })}
           </div>
@@ -208,7 +299,7 @@ export default async function Home() {
             <Empty className="min-h-[240px] border bg-card/40">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  <PackageOpen />
+                  <Package />
                 </EmptyMedia>
                 <EmptyTitle>暂无在售物品</EmptyTitle>
                 <EmptyDescription>
@@ -317,36 +408,64 @@ export default async function Home() {
           </PageContainer>
         ) : null}
 
-        {/* ── Feature cards ── */}
-        <PageContainer className="py-10">
-          <div className="grid gap-5 sm:grid-cols-3">
-            {FEATURES.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <Card
-                  key={f.title}
-                  className={`items-start ${ANIM}`}
-                  // 错峰入场
-                  style={{ animationDelay: `${i * 75}ms` }}
-                >
-                  <CardHeader>
-                    <span className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="size-5" />
-                    </span>
-                    <CardTitle className="font-serif text-lg">
-                      {f.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {f.body}
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </PageContainer>
+        {/* ── 平台亮点 ── */}
+        <section className="bg-surface-container-lowest/60">
+          <PageContainer className="space-y-5 py-12">
+            <SectionHeading
+              title="为什么信任校园枢纽"
+              description="一套围绕校园场景设计的信任与运营闭环"
+            />
+            <div className="grid gap-5 sm:grid-cols-3">
+              {FEATURES.map((f, i) => {
+                const Icon = f.icon;
+                return (
+                  <Card
+                    key={f.title}
+                    className={`items-start ${ANIM}`}
+                    // 错峰入场
+                    style={{ animationDelay: `${i * 75}ms` }}
+                  >
+                    <CardHeader>
+                      <span className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Icon className="size-5" />
+                      </span>
+                      <CardTitle className="font-serif text-lg">
+                        {f.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        {f.body}
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </PageContainer>
+        </section>
+
+        {/* ── 收尾 CTA ── */}
+        <section className="bg-gradient-to-b from-transparent to-primary-container/40">
+          <PageContainer className="flex flex-col items-center gap-4 py-14 text-center md:py-16">
+            <h2 className="font-serif text-2xl font-bold tracking-tight md:text-3xl">
+              {session?.user
+                ? "把闲置变成机会"
+                : "准备好加入校园枢纽了吗？"}
+            </h2>
+            <p className="max-w-md text-sm leading-6 text-muted-foreground">
+              {session?.user
+                ? "发布一件闲置、上架一项技能，或说出你的需求——让校园里的连接从这里开始。"
+                : "注册账号、完成学籍认证，即可发布闲置、预约服务、发布需求。"}
+            </p>
+            <Button asChild size="lg" className="mt-1">
+              <Link href={session?.user ? "/items/new" : "/register"}>
+                {session?.user ? "立即发布" : "免费注册"}
+                <ArrowRight />
+              </Link>
+            </Button>
+          </PageContainer>
+        </section>
 
         {/* Footer line */}
         <PageContainer className="py-10">
