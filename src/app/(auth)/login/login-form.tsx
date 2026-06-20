@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Eye, EyeOff, GraduationCap, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, LogIn, Lock, Mail } from "lucide-react";
 
 import { loginAction, type LoginState } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,23 @@ export default function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
       </CardHeader>
 
       <CardContent>
+        {/* 带 callbackUrl 进来 = 访客点了需要登录的功能,给一句提示把"登录门槛"变成"功能邀请"。 */}
+        {callbackUrl ? (
+          <div className="mb-5 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs leading-5 text-foreground/80">
+            <LogIn className="mt-0.5 size-3.5 shrink-0 text-primary" />
+            <span>
+              登录后即可继续使用该功能。还没有账号?可在下方
+              <Link
+                href="/register"
+                className="mx-0.5 font-medium text-primary hover:underline"
+              >
+                立即注册
+              </Link>
+              ,开启校园交易与互助的全部能力。
+            </span>
+          </div>
+        ) : null}
+
         <form action={formAction} className="space-y-5">
           {callbackUrl ? (
             <input type="hidden" name="callbackUrl" value={callbackUrl} />

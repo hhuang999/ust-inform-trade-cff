@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bell,
+  Compass,
   Handshake,
   Heart,
+  Lock,
   Package,
   Settings,
   ShieldCheck,
@@ -19,10 +21,14 @@ import {
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/components/layout/user-menu";
 
+type IconType = React.ComponentType<{ className?: string }>;
+
 type NavItem = {
   label: string;
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconType;
+  /** 未登录占位:条目可见但点击会跳登录页(右侧显示小锁暗示)。 */
+  locked?: boolean;
 };
 
 function browseItems(): NavItem[] {
@@ -31,21 +37,53 @@ function browseItems(): NavItem[] {
     { label: "物品", href: "/items", icon: Package },
     { label: "服务", href: "/services", icon: Wrench },
     { label: "需求", href: "/needs", icon: HandHeart },
+    { label: "用户指南", href: "/guide", icon: Compass },
   ];
 }
 
+/**
+ * 「我的」条目定义。登录后用真实路径;未登录时同样展示这些条目,
+ * 但点击会跳到登录页(并带回调地址),让访客直观看到「注册登录后能做什么」。
+ */
+type MineDef = {
+  label: string;
+  /** 登录后的真实路径;{userId} 占位在「我的主页」上由当前用户 id 替换。 */
+  path: string;
+  icon: IconType;
+};
+
+const MINE_DEFS: MineDef[] = [
+  { label: "我的主页", path: "/profile/{userId}", icon: User },
+  { label: "我的物品", path: "/me/items", icon: Package },
+  { label: "我的服务", path: "/me/services", icon: Wrench },
+  { label: "我的需求", path: "/me/needs", icon: HandHeart },
+  { label: "我的收藏", path: "/me/favorites", icon: Heart },
+  { label: "服务预约", path: "/me/bookings", icon: ShoppingCart },
+  { label: "需求撮合", path: "/me/matches", icon: Handshake },
+  { label: "通知", path: "/notifications", icon: Bell },
+  { label: "设置", path: "/settings", icon: Settings },
+];
+
+/** 已登录:渲染真实路径。 */
 function mineItems(userId: string): NavItem[] {
-  return [
-    { label: "我的主页", href: `/profile/${userId}`, icon: User },
-    { label: "我的物品", href: "/me/items", icon: Package },
-    { label: "我的服务", href: "/me/services", icon: Wrench },
-    { label: "我的需求", href: "/me/needs", icon: HandHeart },
-    { label: "我的收藏", href: "/me/favorites", icon: Heart },
-    { label: "服务预约", href: "/me/bookings", icon: ShoppingCart },
-    { label: "需求撮合", href: "/me/matches", icon: Handshake },
-    { label: "通知", href: "/notifications", icon: Bell },
-    { label: "设置", href: "/settings", icon: Settings },
-  ];
+  return MINE_DEFS.map((d) => ({
+    label: d.label,
+    href: d.path.replace("{userId}", userId),
+    icon: d.icon,
+  }));
+}
+
+/** 未登录:条目依旧可见,但统一导向登录页;固定路径带回调,「我的主页」无 id 故直登。 */
+function mineGuestItems(): NavItem[] {
+  return MINE_DEFS.map((d) => ({
+    label: d.label,
+    icon: d.icon,
+    locked: true,
+    href:
+      d.path === "/profile/{userId}"
+        ? "/login"
+        : `/login?callbackUrl=${encodeURIComponent(d.path)}`,
+  }));
 }
 
 function adminItems(): NavItem[] {
@@ -81,11 +119,14 @@ function NavGroup({
               "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
               active
                 ? "bg-primary/10 font-medium text-primary"
-                : "text-foreground/80 hover:bg-muted hover:text-foreground"
+                : "text-foreground/80 hover:bg-muted hover:text-foreground",
             )}
           >
             <Icon className="size-4 shrink-0" />
             <span className="truncate">{item.label}</span>
+            {item.locked ? (
+              <Lock className="ml-auto size-3 shrink-0 text-muted-foreground/60" />
+            ) : null}
           </Link>
         );
       })}
@@ -111,9 +152,12 @@ export function AppSidebar({
     >
       <nav className="sticky top-16 flex max-h-[calc(100vh-4rem)] flex-col gap-5 overflow-y-auto p-3">
         <NavGroup title="浏览" items={browseItems()} pathname={pathname} />
-        {user ? (
-          <NavGroup title="我的" items={mineItems(user.id)} pathname={pathname} />
-        ) : null}
+        {/* 未登录也展示「我的」,让访客看见注册登录后能用的功能(点击跳登录页)。 */}
+        <NavGroup
+          title="我的"
+          items={user ? mineItems(user.id) : mineGuestItems()}
+          pathname={pathname}
+        />
         {user?.role === "ADMIN" ? (
           <NavGroup title="管理" items={adminItems()} pathname={pathname} />
         ) : null}

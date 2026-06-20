@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { label: "物品", href: "/items" },
   { label: "服务", href: "/services" },
   { label: "需求", href: "/needs" },
+  { label: "用户指南", href: "/guide" },
 ];
 
 export function SiteHeader({ user }: { user?: SessionUser | null }) {
