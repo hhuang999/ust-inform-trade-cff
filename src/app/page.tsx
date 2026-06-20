@@ -202,7 +202,7 @@ export default async function Home() {
             </span>
 
             <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-              {nickname ? `欢迎回来，${nickname}` : "校园枢纽UniSwap"}
+              {nickname ? `欢迎回来，${nickname}` : "校园枢纽 UniSwap"}
             </h1>
 
             <p className="max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
@@ -446,7 +446,7 @@ export default async function Home() {
         <section className="bg-surface-container-lowest/60">
           <PageContainer className="space-y-5 py-12">
             <SectionHeading
-              title="为什么信任校园枢纽UniSwap"
+              title="为什么信任校园枢纽 UniSwap"
               description="一套围绕校园场景设计的信任与运营闭环"
             />
             <div className="grid gap-5 sm:grid-cols-3">
@@ -485,7 +485,7 @@ export default async function Home() {
             <h2 className="font-serif text-2xl font-bold tracking-tight md:text-3xl">
               {session?.user
                 ? "把闲置变成机会"
-                : "准备好加入校园枢纽UniSwap了吗？"}
+                : "准备好加入校园枢纽 UniSwap了吗？"}
             </h2>
             <p className="max-w-md text-sm leading-6 text-muted-foreground">
               {session?.user
@@ -504,7 +504,7 @@ export default async function Home() {
         {/* Footer line */}
         <PageContainer className="py-10">
           <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} 校园枢纽UniSwap · 港科大（广州）· 校内互助，让信息流转
+            © {new Date().getFullYear()} 校园枢纽 UniSwap · 港科大（广州）· 校内互助，让信息流转
           </p>
         </PageContainer>
       </main>

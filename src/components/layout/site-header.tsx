@@ -28,7 +28,7 @@ export function SiteHeader({ user }: { user?: SessionUser | null }) {
               <BookOpen className="size-5" />
             </span>
             <span className="font-serif text-lg font-bold tracking-tight">
-              校园枢纽
+              校园枢纽 UniSwap
             </span>
           </Link>
 

@@ -31,7 +31,7 @@ export function MobileSidebar({ user }: { user?: SessionUser | null }) {
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="border-b border-outline-variant/40">
-          <SheetTitle className="font-serif">校园枢纽</SheetTitle>
+          <SheetTitle className="font-serif">校园枢纽 UniSwap</SheetTitle>
         </SheetHeader>
         <AppSidebar user={user} className="w-full border-r-0 bg-transparent" />
       </SheetContent>
