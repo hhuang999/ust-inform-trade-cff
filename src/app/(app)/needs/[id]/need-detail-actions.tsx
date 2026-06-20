@@ -52,6 +52,7 @@ import {
   confirmNeedMatchComplete,
   decideNeedMatchLiability,
   pauseNeed,
+  rejectApplicant,
   requestCancelNeedMatch,
   resumeNeed,
 } from "@/app/(app)/needs/actions";
@@ -232,13 +233,32 @@ function RequesterApplicants({
   applicants: ApplicantSummary[];
   matches: MatchedSummary[];
 }) {
-  const [pendingId, startTransition] = useTransition();
+  // 注:useTransition 返回的 pending 是布尔值;原先误写成 pendingId 并用
+  // `!== null` 判断,导致「选择TA」按钮恒为禁用(始终点不动)。这里修正为布尔判断。
+  const [pending, startTransition] = useTransition();
 
   function handleChoose(matchId: string) {
     startTransition(async () => {
       const res = await chooseProvider(matchId);
       if (res.ok) {
         toast.success("已选定提供者");
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  function handleReject(matchId: string) {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("确定拒绝该应征者吗?对方将收到「未选中」通知。")
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const res = await rejectApplicant(matchId);
+      if (res.ok) {
+        toast.success("已拒绝该应征者");
       } else {
         toast.error(res.error);
       }
@@ -305,14 +325,24 @@ function RequesterApplicants({
                       {a.department} · {a.enrollmentYear} 级
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="success"
-                    onClick={() => handleChoose(a.matchId)}
-                    disabled={pendingId !== null}
-                  >
-                    选择TA
-                  </Button>
+                  <div className="flex shrink-0 flex-col gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="success"
+                      onClick={() => handleChoose(a.matchId)}
+                      disabled={pending}
+                    >
+                      选择TA
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleReject(a.matchId)}
+                      disabled={pending}
+                    >
+                      拒绝
+                    </Button>
+                  </div>
                 </div>
                 {a.message ? (
                   <p className="mt-2 rounded-md bg-accent/60 px-2 py-1.5 text-xs text-foreground/80">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
-import { LogOut, Settings, ShieldCheck, User } from "lucide-react";
+import { LogOut, MessageSquare, Settings, ShieldCheck, User } from "lucide-react";
 
 import { logoutAction } from "@/app/(auth)/actions";
 
@@ -66,6 +66,12 @@ export function UserMenu({ user }: { user: SessionUser }) {
           <Link href="/settings">
             <Settings className="size-4" />
             设置
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/feedback">
+            <MessageSquare className="size-4" />
+            反馈与建议
           </Link>
         </DropdownMenuItem>
         {user.role === "ADMIN" ? (
