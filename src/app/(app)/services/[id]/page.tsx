@@ -32,6 +32,8 @@ import {
 } from "./service-detail-actions";
 import { ReportDialog } from "@/components/site/report-dialog";
 import { FavoriteButton } from "@/components/site/favorite-button";
+import { MessageThread } from "@/components/site/message-thread";
+import { loadMessageThread, type MessageThreadData } from "@/lib/messages";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +50,13 @@ function publicUrl(imageKey?: string | null): string | null {
 
 export default async function ServiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
 
   const service = await prisma.service.findUnique({
     where: { id },
@@ -195,6 +200,28 @@ export default async function ServiceDetailPage({
       select: { id: true },
     });
     isServiceFavorited = !!fav;
+  }
+
+  // 站内私信(沟通留言):仅交易关系方(提供者 ↔ 已预约客户)可见。
+  // 提供者 → 按 ?with=<clientId> 选择某位客户;客户(已预约)→ 与提供者。
+  const viewerHasBooking =
+    !!viewerId && service.bookings.some((b) => b.client.id === viewerId);
+  let messageThread: MessageThreadData | null = null;
+  if (viewerId) {
+    const withId = typeof sp.with === "string" ? sp.with : null;
+    const otherUserId = isProvider
+      ? withId
+      : viewerHasBooking
+        ? service.providerId
+        : null;
+    if (otherUserId) {
+      messageThread = await loadMessageThread(
+        "SERVICE",
+        id,
+        viewerId,
+        otherUserId
+      );
+    }
   }
 
   const proofImages = service.proofImageKeys
@@ -419,6 +446,7 @@ export default async function ServiceDetailPage({
             availableSlots={availableSlots}
             myPendingBookings={myPendingBookings}
             providerId={service.providerId}
+            clientCanMessage={viewerHasBooking}
           />
 
           {/* 安全提示 */}
@@ -440,6 +468,18 @@ export default async function ServiceDetailPage({
           </div>
         </aside>
       </div>
+
+      {/* 沟通留言:仅交易关系方可见(提供者↔客户) */}
+      {messageThread && viewerId ? (
+        <MessageThread
+          contextType="SERVICE"
+          contextId={service.id}
+          viewerId={viewerId}
+          otherUserId={messageThread.otherUserId}
+          otherNickname={messageThread.otherNickname}
+          initialMessages={messageThread.messages}
+        />
+      ) : null}
     </PageContainer>
   );
 }

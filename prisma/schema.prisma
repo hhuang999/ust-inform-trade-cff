@@ -63,6 +63,10 @@ model User {
   violations      Violation[]
   feedbacks       Feedback[]
 
+  // 站内私信(仅交易关系方之间)
+  messagesSent     Message[] @relation("MessageSender")
+  messagesReceived Message[] @relation("MessageRecipient")
+
   @@index([verificationStatus])
 }
 
@@ -512,4 +516,33 @@ model Violation {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// ───────────────────────── Messages (站内私信) ─────────────────────────
+// 把原本"一次性的"意向/预约/应征留言,升级为可在站内多轮沟通的私信。
+// 不做独立聊天窗:挂在具体交易上下文(物品/服务/需求)上,仅"交易关系方"之间可见,
+// 在详情页"沟通留言"区展示;新消息通过 Notification(type="message")送达对方。
+// contextType + contextId 是多态链接(无 FK):在应用层按 contextType 解析到
+// Item/Service/Need。一对用户的会话 = 同 (contextType, contextId) 下双方互发的消息。
+
+enum MessageContextType {
+  ITEM
+  SERVICE
+  NEED
+}
+
+model Message {
+  id          String             @id @default(cuid())
+  contextType MessageContextType
+  contextId   String
+  senderId    String
+  recipientId String
+  body        String
+  createdAt   DateTime           @default(now())
+
+  sender    User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([contextType, contextId])
+  @@index([recipientId, createdAt])
 }

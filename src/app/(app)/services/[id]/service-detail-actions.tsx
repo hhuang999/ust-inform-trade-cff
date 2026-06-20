@@ -109,6 +109,8 @@ export interface ServiceDetailActionsProps {
   myPendingBookings: PendingBooking[];
   /** 服务提供者 id(无时段时提供"查看卖家主页"出口)。 */
   providerId: string;
+  /** 当前客户是否可与提供者私信(有任何有效预约即 true,用于"给卖家留言"入口)。 */
+  clientCanMessage: boolean;
 }
 
 // formatLocal 统一来自 @/lib/time(formatDateTime),显式 Asia/Shanghai。
@@ -147,7 +149,13 @@ function ContactBlock({ contact }: { contact: string | null }) {
 
 // ───────────────────────── 进行中预约状态行(双方共用) ─────────────────────────
 
-function BookingStatusRow({ booking }: { booking: ActiveBooking }) {
+function BookingStatusRow({
+  serviceId,
+  booking,
+}: {
+  serviceId: string;
+  booking: ActiveBooking;
+}) {
   const [pending, startTransition] = useTransition();
 
   function handleComplete() {
@@ -261,6 +269,20 @@ function BookingStatusRow({ booking }: { booking: ActiveBooking }) {
           </div>
         )
       ) : null}
+
+      <div className="mt-2">
+        <Button
+          asChild
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-xs text-muted-foreground"
+        >
+          <Link href={`/services/${serviceId}?with=${booking.clientId}#messages`}>
+            <MessageCircle />
+            私信 {booking.clientNickname}
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
@@ -268,8 +290,10 @@ function BookingStatusRow({ booking }: { booking: ActiveBooking }) {
 // ───────────────────────── 提供者侧:待确认预约列表 ─────────────────────────
 
 function ProviderPendingList({
+  serviceId,
   pendingBookings,
 }: {
+  serviceId: string;
   pendingBookings: PendingBooking[];
 }) {
   // 注:useTransition 返回的是布尔 isPending;原先误命名为 pendingId 并用
@@ -370,7 +394,7 @@ function ProviderPendingList({
               </div>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
                 variant="success"
@@ -388,6 +412,17 @@ function ProviderPendingList({
               >
                 <XCircle />
                 拒绝
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground"
+              >
+                <Link href={`/services/${serviceId}?with=${b.clientId}#messages`}>
+                  <MessageCircle />
+                  私信
+                </Link>
               </Button>
             </div>
           )}
@@ -649,12 +684,15 @@ function ProviderActions({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <ProviderPendingList pendingBookings={pendingBookings} />
+          <ProviderPendingList
+            serviceId={serviceId}
+            pendingBookings={pendingBookings}
+          />
           {activeBookings.length > 0 ? (
             <div className="space-y-3">
               <Separator />
               {activeBookings.map((b) => (
-                <BookingStatusRow key={b.id} booking={b} />
+                <BookingStatusRow key={b.id} serviceId={serviceId} booking={b} />
               ))}
             </div>
           ) : null}
@@ -676,6 +714,7 @@ function ClientActions({
   status,
   myPendingBookings,
   providerId,
+  clientCanMessage,
 }: {
   serviceId: string;
   contact: string | null;
@@ -683,6 +722,7 @@ function ClientActions({
   status: "ACTIVE" | "PAUSED" | "CLOSED";
   myPendingBookings: PendingBooking[];
   providerId: string;
+  clientCanMessage: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = React.useState(false);
@@ -743,6 +783,14 @@ function ClientActions({
               </div>
             ))}
           </div>
+        ) : null}
+        {clientCanMessage ? (
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <Link href="#messages">
+              <MessageCircle />
+              给卖家留言
+            </Link>
+          </Button>
         ) : null}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -885,6 +933,7 @@ export function ServiceDetailActions({
   availableSlots,
   myPendingBookings,
   providerId,
+  clientCanMessage,
 }: ServiceDetailActionsProps) {
   if (isProvider) {
     return (
@@ -907,6 +956,7 @@ export function ServiceDetailActions({
         status={status}
         myPendingBookings={myPendingBookings}
         providerId={providerId}
+        clientCanMessage={clientCanMessage}
       />
     );
   }

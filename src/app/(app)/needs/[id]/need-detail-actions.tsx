@@ -130,7 +130,13 @@ function ContactBlock({ contact }: { contact: string | null }) {
 
 // ───────────────────────── 撮合状态行(双方共用) ─────────────────────────
 
-function MatchStatusRow({ match }: { match: MatchedSummary }) {
+function MatchStatusRow({
+  needId,
+  match,
+}: {
+  needId: string;
+  match: MatchedSummary;
+}) {
   const [pending, startTransition] = useTransition();
 
   function handleComplete() {
@@ -241,6 +247,20 @@ function MatchStatusRow({ match }: { match: MatchedSummary }) {
           </div>
         )
       ) : null}
+
+      <div className="mt-2">
+        <Button
+          asChild
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-xs text-muted-foreground"
+        >
+          <Link href={`/needs/${needId}?with=${match.providerId}#messages`}>
+            <MessageCircle />
+            私信 {match.nickname}
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
@@ -248,9 +268,11 @@ function MatchStatusRow({ match }: { match: MatchedSummary }) {
 // ───────────────────────── 发布者侧:应征者列表 ─────────────────────────
 
 function RequesterApplicants({
+  needId,
   applicants,
   matches,
 }: {
+  needId: string;
   applicants: ApplicantSummary[];
   matches: MatchedSummary[];
 }) {
@@ -312,7 +334,7 @@ function RequesterApplicants({
         {matches.length > 0 ? (
           <div className="space-y-3">
             {matches.map((m) => (
-              <MatchStatusRow key={m.matchId} match={m} />
+              <MatchStatusRow key={m.matchId} needId={needId} match={m} />
             ))}
             <Separator />
           </div>
@@ -346,7 +368,7 @@ function RequesterApplicants({
                       {a.department} · {a.enrollmentYear} 级
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-col gap-1.5">
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <Button
                       size="sm"
                       variant="success"
@@ -362,6 +384,16 @@ function RequesterApplicants({
                       disabled={pending}
                     >
                       拒绝
+                    </Button>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs text-muted-foreground"
+                    >
+                      <Link href={`/needs/${needId}?with=${a.providerId}#messages`}>
+                        私信
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -483,7 +515,11 @@ function RequesterActions({
 }) {
   return (
     <div className="space-y-4">
-      <RequesterApplicants applicants={applicants} matches={matches} />
+      <RequesterApplicants
+        needId={needId}
+        applicants={applicants}
+        matches={matches}
+      />
       <RequesterLifecycle needId={needId} status={status} />
     </div>
   );
@@ -539,7 +575,7 @@ function ProviderActions({
         {matches.length > 0 ? (
           <div className="space-y-3">
             {matches.map((m) => (
-              <MatchStatusRow key={m.matchId} match={m} />
+              <MatchStatusRow key={m.matchId} needId={needId} match={m} />
             ))}
             <Separator />
           </div>
@@ -579,6 +615,14 @@ function ProviderActions({
             <p className="mt-2 rounded-md bg-warning/10 px-3 py-2 text-center text-xs text-muted-foreground">
               需求方已选定一位提供者,你仍在候选中;若对方退出,需求方可能再联系你。
             </p>
+          ) : null}
+          {viewerApplied || matches.length > 0 ? (
+            <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+              <Link href="#messages">
+                <MessageCircle />
+                给需求方留言
+              </Link>
+            </Button>
           ) : null}
         </div>
 

@@ -43,6 +43,8 @@ import {
 } from "./item-detail-actions";
 import { ReportDialog } from "@/components/site/report-dialog";
 import { FavoriteButton } from "@/components/site/favorite-button";
+import { MessageThread } from "@/components/site/message-thread";
+import { loadMessageThread, type MessageThreadData } from "@/lib/messages";
 
 export const dynamic = "force-dynamic";
 
@@ -75,10 +77,13 @@ function TradeMethodIcon({ method }: { method: string }) {
 
 export default async function ItemDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
 
   const item = await prisma.item.findUnique({
     where: { id },
@@ -216,6 +221,21 @@ export default async function ItemDetailPage({
       select: { id: true },
     });
     hasReviewed = !!review;
+  }
+
+  // 站内私信(沟通留言):仅交易关系方可见。
+  // 非卖家有意向/交易 → 与卖家;卖家 → 按 ?with=<userId> 选择某位意向人/买家。
+  let messageThread: MessageThreadData | null = null;
+  if (viewerId) {
+    const withId = typeof sp.with === "string" ? sp.with : null;
+    const otherUserId = isSeller
+      ? withId
+      : hasInterest || currentDeal
+        ? item.seller.id
+        : null;
+    if (otherUserId) {
+      messageThread = await loadMessageThread("ITEM", id, viewerId, otherUserId);
+    }
   }
 
   const images = item.imageKeys
@@ -456,6 +476,18 @@ export default async function ItemDetailPage({
           </div>
         </aside>
       </div>
+
+      {/* 沟通留言:仅交易关系方可见(买家↔卖家) */}
+      {messageThread && viewerId ? (
+        <MessageThread
+          contextType="ITEM"
+          contextId={item.id}
+          viewerId={viewerId}
+          otherUserId={messageThread.otherUserId}
+          otherNickname={messageThread.otherNickname}
+          initialMessages={messageThread.messages}
+        />
+      ) : null}
     </PageContainer>
   );
 }

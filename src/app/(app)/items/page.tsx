@@ -24,6 +24,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
+  EmptyContent,
 } from "@/components/ui/empty";
 import { ITEM_CATEGORIES } from "@/lib/constants/item";
 import { expandSearchTerms } from "@/lib/search";
@@ -293,13 +294,20 @@ export default async function ItemsPage({
             <EmptyMedia variant="icon">
               <PackageOpen />
             </EmptyMedia>
-            <EmptyTitle>暂无物品</EmptyTitle>
+            <EmptyTitle>{search || category ? "没有匹配的物品" : "暂无物品"}</EmptyTitle>
             <EmptyDescription>
               {search || category
                 ? "换个筛选条件试试,或发布你的闲置好物"
                 : "还没有人发布物品,成为第一个发布者吧"}
             </EmptyDescription>
           </EmptyHeader>
+          {search || category ? (
+            <EmptyContent>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/items">清除筛选</Link>
+              </Button>
+            </EmptyContent>
+          ) : null}
         </Empty>
       ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">

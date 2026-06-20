@@ -28,6 +28,21 @@ export function notificationHref(n: NotificationLike): string | null {
   if (!n.data || typeof n.data !== "object" || Array.isArray(n.data)) return null;
   const d = n.data as Record<string, unknown>;
 
+  // 站内私信:contextType+contextId 是多态上下文,senderId 定位与谁的会话。
+  // 私信通知通常已带显式 link,这里作为 data 兜底(与物品/服务/通知一致)。
+  const msgContextType = asString(d.contextType);
+  const msgContextId = asString(d.contextId);
+  const msgSenderId = asString(d.senderId);
+  if (msgContextId && msgContextType) {
+    const base =
+      msgContextType === "ITEM"
+        ? `/items/${msgContextId}`
+        : msgContextType === "SERVICE"
+          ? `/services/${msgContextId}`
+          : `/needs/${msgContextId}`;
+    return msgSenderId ? `${base}?with=${msgSenderId}#messages` : base;
+  }
+
   const matchId = asString(d.matchId);
   const bookingId = asString(d.bookingId);
   const dealId = asString(d.dealId);
