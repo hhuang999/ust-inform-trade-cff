@@ -259,7 +259,9 @@ function ProviderPendingList({
 }: {
   pendingBookings: PendingBooking[];
 }) {
-  const [pendingId, startTransition] = useTransition();
+  // 注:useTransition 返回的是布尔 isPending;原先误命名为 pendingId 并用
+  // `!== null` 判断,导致「确认接单/拒绝」按钮恒为禁用(始终点不动)。改为布尔判断。
+  const [pending, startTransition] = useTransition();
   const [rejectingId, setRejectingId] = React.useState<string | null>(null);
   const [reason, setReason] = React.useState("");
 
@@ -337,7 +339,7 @@ function ProviderPendingList({
                   size="sm"
                   variant="danger"
                   onClick={() => handleReject(b.id)}
-                  disabled={pendingId !== null}
+                  disabled={pending}
                 >
                   提交拒绝
                 </Button>
@@ -348,7 +350,7 @@ function ProviderPendingList({
                     setRejectingId(null);
                     setReason("");
                   }}
-                  disabled={pendingId !== null}
+                  disabled={pending}
                 >
                   取消
                 </Button>
@@ -360,7 +362,7 @@ function ProviderPendingList({
                 size="sm"
                 variant="success"
                 onClick={() => handleConfirm(b.id)}
-                disabled={pendingId !== null}
+                disabled={pending}
               >
                 <CheckCircle2 />
                 确认接单
@@ -369,7 +371,7 @@ function ProviderPendingList({
                 size="sm"
                 variant="outline"
                 onClick={() => setRejectingId(b.id)}
-                disabled={pendingId !== null}
+                disabled={pending}
               >
                 <XCircle />
                 拒绝
