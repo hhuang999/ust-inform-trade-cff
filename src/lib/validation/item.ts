@@ -62,17 +62,26 @@ const baseShape = {
   category: categoryEnum,
   condition: conditionEnum,
   priceMode: priceModeEnum,
-  price: z.number().int("价格须为整数").nonnegative("价格不能为负").nullish(),
+  price: z
+    .number()
+    .int("价格须为整数")
+    .nonnegative("价格不能为负")
+    .max(1_000_000, "价格超出合理范围")
+    .nullish(),
   originalPrice: z
     .number()
     .int("原价须为整数")
     .nonnegative("原价不能为负")
+    .max(1_000_000, "原价超出合理范围")
     .nullish(),
   imageKeys: z
     .array(z.string().min(1, "图片 key 不能为空"))
     .min(1, "至少上传 1 张图片")
     .max(9, "最多 9 张图片"),
-  tags: z.array(z.string()).max(8, "标签最多 8 个").optional(),
+  tags: z
+    .array(z.string().trim().min(1).max(20, "单个标签最多 20 字"))
+    .max(8, "标签最多 8 个")
+    .optional(),
   tradeMethods: z
     .array(tradeMethodEnum)
     .min(1, "至少选择一种交易方式"),
