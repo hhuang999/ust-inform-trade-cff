@@ -195,7 +195,7 @@ export default async function Home() {
       <main className="flex-1">
         {/* ── Hero ── */}
         <section className="bg-gradient-to-b from-primary-container/50 via-primary-container/15 to-transparent">
-          <PageContainer className="flex flex-col items-center gap-6 py-20 text-center md:py-28">
+          <PageContainer className="flex flex-col items-center gap-6 pt-20 pb-8 text-center md:pt-28 md:pb-12">
             <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant/50 bg-card/70 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
               <span className="size-1.5 rounded-full bg-primary" />
               港科大（广州）· 校园互助市场
