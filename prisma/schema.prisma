@@ -384,7 +384,7 @@ model NeedMatch {
   @@index([status, firstConfirmedAt])
 }
 
-// ───────────────────────── Reviews (双盲评价) ─────────────────────────
+// ───────────────────────── Reviews (交易评价) ─────────────────────────
 // dealType + dealId is a polymorphic link (no FK): resolve the source table in
 // application code based on dealType. One review per (dealType, dealId, reviewer).
 
@@ -402,7 +402,8 @@ model Review {
   revieweeId  String
   rating      Int
   content     String?
-  /// Hidden until both parties reviewed OR 30 days elapse (auto-reveal cron).
+  /// 提交即公开:createReview 写入时即 revealed=true。@default(false) 仅为遗留兜底
+  /// (旧双盲遗留行 + 30 天 auto-reveal cron 兜底公开任何遗漏);新评价不受其影响。
   revealed    Boolean  @default(false)
   revealedAt  DateTime?
   createdAt   DateTime @default(now())
