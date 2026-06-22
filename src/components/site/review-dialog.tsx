@@ -69,11 +69,7 @@ export function ReviewDialog({
         content: content.trim() || null,
       });
       if (res.ok) {
-        toast.success(
-          res.revealed
-            ? "双方均已评价,已公开"
-            : "评价已提交"
-        );
+        toast.success("评价已提交并公开");
         reset();
         setOpen(false);
       } else {
@@ -112,7 +108,7 @@ export function ReviewDialog({
         <DialogHeader>
           <DialogTitle>评价 {revieweeLabel}</DialogTitle>
           <DialogDescription>
-            本次交易已完成,请对交易体验作出评价。双方均提交后评价才会公开。
+            本次交易已完成,请对交易体验作出评价。提交后评价将立即公开。
           </DialogDescription>
         </DialogHeader>
 
