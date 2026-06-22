@@ -44,7 +44,9 @@ import {
 import { ReportDialog } from "@/components/site/report-dialog";
 import { FavoriteButton } from "@/components/site/favorite-button";
 import { MessageThread } from "@/components/site/message-thread";
+import { ReviewsSection, type ReviewDisplayItem } from "@/components/site/reviews-section";
 import { loadMessageThread, type MessageThreadData } from "@/lib/messages";
+import { formatDate } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -221,6 +223,41 @@ export default async function ItemDetailPage({
       select: { id: true },
     });
     hasReviewed = !!review;
+  }
+
+  // 本物品交易评价(COMPLETED 后产生;revealed 即公开,对所有访客可见)。
+  // ItemDeal.itemId 唯一 → 每个物品至多一笔交易,故评价绑定到 item.deal.id。
+  let itemReviews: ReviewDisplayItem[] = [];
+  let itemReviewAvg: number | null = null;
+  let itemReviewCount = 0;
+  if (item.deal) {
+    const [reviewRows, reviewAgg] = await Promise.all([
+      prisma.review.findMany({
+        where: { dealType: "ITEM", dealId: item.deal.id, revealed: true },
+        orderBy: { revealedAt: "desc" },
+        select: {
+          id: true,
+          rating: true,
+          content: true,
+          revealedAt: true,
+          reviewer: { select: { nickname: true } },
+        },
+      }),
+      prisma.review.aggregate({
+        where: { dealType: "ITEM", dealId: item.deal.id, revealed: true },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+    ]);
+    itemReviews = reviewRows.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      content: r.content,
+      reviewerNickname: r.reviewer?.nickname ?? null,
+      footer: r.revealedAt ? formatDate(r.revealedAt) : undefined,
+    }));
+    itemReviewAvg = reviewAgg._avg.rating;
+    itemReviewCount = reviewAgg._count._all;
   }
 
   // 站内私信(沟通留言):仅交易关系方可见。
@@ -476,6 +513,14 @@ export default async function ItemDetailPage({
           </div>
         </aside>
       </div>
+
+      {/* 交易评价:COMPLETED 后产生,公开即可见(无评价时不渲染) */}
+      <ReviewsSection
+        reviews={itemReviews}
+        avg={itemReviewAvg}
+        count={itemReviewCount}
+        title="交易评价"
+      />
 
       {/* 沟通留言:仅交易关系方可见(买家↔卖家) */}
       {messageThread && viewerId ? (
